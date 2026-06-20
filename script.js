@@ -27,20 +27,6 @@ const APPS = {
         ],
         downloadUrl: "https://github.com/luisdanielsilva/KnockApp/releases/latest/download/KnockApp.zip"
     },
-    brightness: {
-        name: "BrightnessApp",
-        tagline: "Instant brightness levels for peak comfort.",
-        icon: "☀️",
-        salt: "Brightness-Secret-Salt-999-Lux",
-        features: [
-            "Quick Select: 25%, 50%, 75%, 100%",
-            "Apple Silicon Optimized (M1/M2/M3)",
-            "Dynamic Menu Bar Sunlight Icon",
-            "Automatic Restore on Exit",
-            "Zero Performance Overhead"
-        ],
-        downloadUrl: "https://github.com/luisdanielsilva/BrightnessApp/releases/latest/download/BrightnessApp.zip"
-    },
     visualexif: {
         name: "VisualExif",
         tagline: "Professional Metadata Surgery",
@@ -53,17 +39,19 @@ const APPS = {
         ],
         downloadUrl: "https://github.com/luisdanielsilva/VisualExif/releases/latest/download/VisualExif.zip"
     },
-    systempulse: {
-        name: "System Pulse",
-        tagline: "Real-time health monitor and optimizer.",
-        icon: "⚡",
-        salt: "Pulse-Secret-Salt-Alpha-Centauri",
+    filelistertauri: {
+        name: "FileLister Tauri",
+        tagline: "Cross-platform duplicate finder for macOS, Windows & Linux.",
+        icon: "🗂️",
+        salt: "FileListerTauri-Secret-Salt-2026-Cross",
         features: [
-            "Memory Purge Technology",
-            "Background Task Sentinel",
-            "Visual CPU & Network Charts",
-            "Smart Battery Advisor"
-        ]
+            "SHA-256 Cryptographic Hashing",
+            "Cross-Platform: macOS, Windows & Linux",
+            "Final Binary Verification (Byte-by-Byte)",
+            "Native Performance via Tauri & Rust",
+            "macOS / Windows Trash Integration"
+        ],
+        downloadUrl: "https://github.com/luisdanielsilva/FileLister-Tauri/releases/latest/download/FileLister-Tauri.zip"
     }
 };
 
@@ -133,8 +121,8 @@ function simulatePayment(provider) {
 const SALT_MAP = {
     filelister: "FileLister-Secret-Salt-2026-Porto",
     knockapp: "KnockApp-Secret-Salt-2026-Standard",
-    brightness: "Brightness-Secret-Salt-999-Lux",
-    systempulse: "Pulse-Secret-Salt-Alpha-Centauri"
+    visualexif: "VisualExif-Secret-Salt-2026-Exif",
+    filelistertauri: "FileListerTauri-Secret-Salt-2026-Cross"
 };
 
 document.getElementById('generateBtn').addEventListener('click', async () => {
