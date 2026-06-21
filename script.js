@@ -41,17 +41,22 @@ const APPS = {
     },
     filelistertauri: {
         name: "FileLister Tauri",
-        tagline: "Cross-platform duplicate finder for macOS, Windows & Linux.",
+        tagline: "Cross-platform duplicate finder for macOS & Windows.",
         icon: "🗂️",
         salt: "FileListerTauri-Secret-Salt-2026-Cross",
         features: [
             "SHA-256 Cryptographic Hashing",
-            "Cross-Platform: macOS, Windows & Linux",
+            "Cross-Platform: macOS & Windows",
             "Final Binary Verification (Byte-by-Byte)",
             "Native Performance via Tauri & Rust",
             "macOS / Windows Trash Integration"
         ],
-        downloadUrl: "https://github.com/luisdanielsilva/FileLister-Tauri/releases/latest/download/FileLister-Tauri.zip"
+        // Permanent links — these always resolve to the newest release's installers.
+        repo: "luisdanielsilva/FileLister-Tauri",
+        downloads: [
+            { label: "⌘ macOS (Apple Silicon)", url: "https://github.com/luisdanielsilva/FileLister-Tauri/releases/latest/download/FileLister-Tauri-macos.dmg" },
+            { label: "⊞ Windows (.exe)", url: "https://github.com/luisdanielsilva/FileLister-Tauri/releases/latest/download/FileLister-Tauri-windows-setup.exe" }
+        ]
     }
 };
 
@@ -75,17 +80,39 @@ function selectApp(appId) {
     });
 
     document.getElementById('details').classList.remove('hidden');
-    
-    // Update download link
+
+    // Downloads: a single button (downloadUrl) OR per-platform buttons (downloads[]).
     const downloadBtn = document.getElementById('detailDownload');
-    if (app.downloadUrl) {
+    const multiBox = document.getElementById('detailDownloads');
+    multiBox.innerHTML = "";
+    if (app.downloads && app.downloads.length) {
+        downloadBtn.style.display = "none";
+        app.downloads.forEach(d => {
+            const a = document.createElement('a');
+            a.href = d.url;
+            a.className = "primary-btn";
+            a.style.textDecoration = "none";
+            a.innerText = d.label;
+            multiBox.appendChild(a);
+        });
+    } else if (app.downloadUrl) {
         downloadBtn.href = app.downloadUrl;
         downloadBtn.style.display = "inline-block";
         downloadBtn.innerText = "Download Trial";
     } else {
         downloadBtn.style.display = "none";
     }
-    
+
+    // Live version label (fetched from the GitHub API) — updates itself each release.
+    const versionEl = document.getElementById('detailVersion');
+    versionEl.innerText = "";
+    if (app.repo) {
+        fetch(`https://api.github.com/repos/${app.repo}/releases/latest`)
+            .then(r => r.ok ? r.json() : null)
+            .then(rel => { if (rel && rel.tag_name) versionEl.innerText = "Latest version: " + rel.tag_name; })
+            .catch(() => {});
+    }
+
     // Auto-select in the generator dropdown for convenience
     document.getElementById('appSelect').value = appId;
 }

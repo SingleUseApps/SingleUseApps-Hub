@@ -464,3 +464,21 @@ footer { padding: 64px 0; text-align: center; color: var(--text-dim); font-size:
 }
 
 #finalKey { font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 700; }
+
+/* Detail download area (single button or per-platform buttons + live version) */
+.detail-actions { text-align: center; }
+
+.version-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.download-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
