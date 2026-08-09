@@ -17,8 +17,10 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Install sshpass
-        run: sudo apt-get install -y sshpass
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
       - name: Add VPS to known_hosts
         run: |
@@ -27,12 +29,12 @@ jobs:
 
       - name: Prepare Directory
         run: |
-          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} 'echo "${{ secrets.VPS_PASSWORD }}" | sudo -S mkdir -p /var/www/singleuseapps-portal/ && echo "${{ secrets.VPS_PASSWORD }}" | sudo -S chown -R deploy:www-data /var/www/singleuseapps-portal/'
+          ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} 'sudo mkdir -p /var/www/singleuseapps-portal/ && sudo chown -R deploy:www-data /var/www/singleuseapps-portal/'
 
       - name: Deploy via Rsync
         run: |
-          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/
 
       - name: Restart Nginx
         run: |
-          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} 'echo "${{ secrets.VPS_PASSWORD }}" | sudo -S systemctl restart nginx'
+          ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx'
