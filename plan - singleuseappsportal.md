@@ -92,7 +92,8 @@ key       = "XXXX-XXXX-XXXX-XXXX-XXXX-SIGSIG"   (seed in 5 groups of 4, then the
 - Both **Stripe** and **PayPal** (the Portal already has both buttons; today `simulatePayment()` is fake — a `setTimeout` with no real payment check — this gets replaced entirely).
 - Real, webhook-verified confirmation before any key is issued.
 - **Stripe test keys obtained (2026-08-16).** Publishable key: `pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve` (safe to embed in frontend code). The matching secret key is intentionally **not** recorded in this file — kept in local memory only, never committed to git; moves to a VPS environment variable once `license-service` is scaffolded. A webhook signing secret (`whsec_...`) is still needed, generated once a real webhook endpoint URL exists to register with Stripe.
-- **Still needed:** PayPal Developer sandbox + live app credentials, confirmed pricing (assumed 5€+ = lifetime license, same as current Portal copy, unless changed), Stripe live keys (later, once ready for real payments).
+- **PayPal on hold (2026-08-16):** deliberately deferring PayPal Developer sandbox credentials until the Stripe path is built and confirmed working end-to-end (Buy Widget → checkout → webhook → key generated → email delivered) — avoids building two payment integrations in parallel before either is proven.
+- **Still needed:** confirmed pricing (assumed 5€+ = lifetime license, same as current Portal copy, unless changed), Stripe live keys (later, once ready for real payments), PayPal credentials (once Stripe is proven).
 
 ## 6. Shared "Buy Widget"
 
