@@ -145,7 +145,9 @@ Each app domain gets its own branded address (`support@dupsweep.com`, `support@s
 6. Resend SMTP credentials (`smtp.resend.com`, port `587`, username `resend`, password = Resend API key) used in Gmail's "Send mail as" SMTP form for `support@dupsweep.com` — verified successfully.
 7. Not yet added: a DMARC record for `dupsweep.com` — optional deliverability improvement, not required for the above to work.
 
-**`singleuseapps.com` — reduced scope, in progress.** Discovered Resend's **free plan only supports 1 verified domain**, already used by `dupsweep.com`. Considered: upgrading to Resend Pro (~$20/mo, unlimited domains), a second free Resend account via Gmail plus-addressing (extra logins/API keys to juggle per app going forward), or skipping Send-as for this domain. **Decision: skip Resend/Gmail Send-as for `singleuseapps.com` for now** — zero cost, replies from this inbox just show as `singleuseapp@gmail.com` instead of `support@singleuseapps.com`, acceptable at current volume. Revisit (likely Resend Pro, since the same limit will recur for every future app domain) once it's worth it. So this domain only gets step 1–3 above (Cloudflare Email Routing, receiving only) — no domain verification or Send-as.
+**`singleuseapps.com` — reduced scope, complete.** Discovered Resend's **free plan only supports 1 verified domain**, already used by `dupsweep.com`. Considered: upgrading to Resend Pro (~$20/mo, unlimited domains), a second free Resend account via Gmail plus-addressing (extra logins/API keys to juggle per app going forward), or skipping Send-as for this domain. **Decision: skip Resend/Gmail Send-as for `singleuseapps.com` for now** — zero cost, replies from this inbox just show as `singleuseapp@gmail.com` instead of `support@singleuseapps.com`, acceptable at current volume. Revisit (likely Resend Pro, since the same limit will recur for every future app domain) once it's worth it. So this domain only got steps 1–3 above (Cloudflare Email Routing, receiving only) — no domain verification or Send-as. **Confirmed working (2026-08-15)** — test email received.
+
+**Email infrastructure phase: complete for both current domains.** `dupsweep.com` has full receive + reply-as; `singleuseapps.com` has receive-only (by choice). Both `support@` addresses land in `singleuseapp@gmail.com`. Next phase: Stripe/PayPal credentials, GitHub org, `license-service` backend.
 
 ## 9. Domains — registered
 
@@ -178,7 +180,7 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 
 - [x] Finish `singleuseapps.com` Cloudflare migration — Active
 - [x] Cloudflare Email Routing + Resend SMTP + Gmail "Send mail as" fully working for `support@dupsweep.com`
-- [ ] Cloudflare Email Routing (receiving only, no Resend/Send-as per the decision above) for `support@singleuseapps.com`
+- [x] Cloudflare Email Routing (receiving only) working for `support@singleuseapps.com`
 - [ ] Stripe test + live keys
 - [ ] PayPal sandbox + live app credentials
 - [ ] Confirm pricing
