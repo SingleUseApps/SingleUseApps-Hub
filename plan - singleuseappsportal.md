@@ -117,14 +117,14 @@ Payment is implemented **once**, embedded on every site so it feels native to ea
 ### DNS → Cloudflare
 Nameservers for every relevant domain are moving from **Amen** to **Cloudflare** (free plan). Domains stay *registered* at Amen — only DNS hosting moves. Reasons: free **Cloudflare Email Routing** (below), free CDN/DDoS/WAF for static assets, better DNS management UI (needed anyway for Resend's verification records). Kept in **DNS-only / grey-cloud** mode so the existing nginx + Let's Encrypt/certbot setup on the VPS isn't disrupted.
 
-**Status (2026-08-15):**
+**Status (2026-08-15): all three domains Active.**
 | Domain | Status | Nameservers |
 |---|---|---|
 | `dupsweep.com` | ✅ Active | `diva.ns.cloudflare.com` / `eugene.ns.cloudflare.com` |
 | `singleuseapps.pt` | ✅ Active | `diva.ns.cloudflare.com` / `eugene.ns.cloudflare.com` |
-| `singleuseapps.com` | 🔄 In progress | `hans.ns.cloudflare.com` / `julissa.ns.cloudflare.com` (**different pair** — Cloudflare can assign a distinct pair per domain even in one account; don't assume the same pair applies across domains) |
+| `singleuseapps.com` | ✅ Active | `hans.ns.cloudflare.com` / `julissa.ns.cloudflare.com` (**different pair** — Cloudflare can assign a distinct pair per domain even in one account; don't assume the same pair applies across domains) |
 
-**Known hiccup:** right after switching nameservers, Cloudflare may flag an "invalid DS record" — Amen's nameserver-change form doesn't actually remove the registry-level DNSSEC DS record despite implying it will. Fix: manually delete the DS record in Amen's DNSSEC section for that domain; clears within a day.
+**Known hiccup:** right after switching nameservers, Cloudflare may flag an "invalid DS record" — Amen's nameserver-change form doesn't actually remove the registry-level DNSSEC DS record despite implying it will. Fix: manually delete the DS record in Amen's DNSSEC section for that domain; clears within a day. Hit this for `dupsweep.com`, did not recur for `singleuseapps.com`.
 
 ### Support email — one address per app, one shared inbox
 Each app domain gets its own branded address (`support@dupsweep.com`, `support@singleuseapps.com`, and so on for future apps) — better for customer trust than a generic catch-all — but all of them forward into **one** real inbox rather than a separate mailbox per app, so there's only ever one place to check:
@@ -133,6 +133,19 @@ Each app domain gets its own branded address (`support@dupsweep.com`, `support@s
 2. **Gmail "Send mail as"** (Settings → Accounts) is configured per forwarded address so replies show `From: support@dupsweep.com` etc., not the raw Gmail address.
 
 **Why this instead of a real multi-domain mailbox** (Proton custom domains, Migadu, Google Workspace, Zoho, Fastmail): all of those are paid, and a genuinely free native multi-domain mailbox doesn't really exist as a mainstream product — authenticated hosting for domains you don't own is exactly what those services charge for. Trade-off accepted: without dedicated per-domain DKIM signing, deliverability is a little weaker than a paid host — acceptable at current volume; revisit (e.g. Migadu, ~19€/year, unlimited domains) if that becomes a real problem.
+
+### Implementation status (2026-08-15)
+
+**`dupsweep.com` — fully working, receive + reply-as:**
+1. Cloudflare Email Routing enabled. Hit an "Existing non-Cloudflare MX records conflict" error on first activation — a leftover MX record (likely an Amen default/parking record) had been imported into the DNS zone; fixed by deleting it under DNS → Records, then re-activating successfully.
+2. Destination `singleuseapp@gmail.com` added and verified (this verification is account-wide in Cloudflare, not per-domain).
+3. Routing rule `support@dupsweep.com` → `singleuseapp@gmail.com` created and confirmed working (first test email took several minutes to arrive — normal for freshly-propagated MX records).
+4. **Plan correction discovered here:** Gmail's "Send mail as" does **not** offer a plain "send through Gmail" option for an arbitrary custom domain on a personal account — it always requires real SMTP relay credentials. Cloudflare Email Routing is **receive-only**, so the MX host Gmail auto-suggested (`route3.mx.cloudflare.net`) doesn't work as an outbound SMTP relay.
+5. **Fix — reused Resend for outbound SMTP too**, rather than adding a new service: signed up at Resend (org `singleuseapp`), added `dupsweep.com` as a domain, added its DNS records (DKIM + a `send.dupsweep.com` MX/SPF pointing at the Amazon SES infrastructure Resend uses) in Cloudflare. Domain shows **Verified** in Resend.
+6. Resend SMTP credentials (`smtp.resend.com`, port `587`, username `resend`, password = Resend API key) used in Gmail's "Send mail as" SMTP form for `support@dupsweep.com` — verified successfully.
+7. Not yet added: a DMARC record for `dupsweep.com` — optional deliverability improvement, not required for the above to work.
+
+**`singleuseapps.com` — not yet started.** Same 6 steps as above still need doing; the Resend API key is account-wide (not per-domain), so no new key is needed, just adding `singleuseapps.com` as a second domain in Resend and repeating the Cloudflare/Gmail steps.
 
 ## 9. Domains — registered
 
@@ -163,11 +176,11 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 
 ## 12. Open items / next steps
 
-- [ ] Finish `singleuseapps.com` Cloudflare migration (correct nameserver pair now entered at Amen, watch for the DS-record warning)
-- [ ] Set up Cloudflare Email Routing for `support@dupsweep.com` and `support@singleuseapps.com` → `singleuseapp@gmail.com`, then Gmail "Send mail as" for both
+- [x] Finish `singleuseapps.com` Cloudflare migration — Active
+- [x] Cloudflare Email Routing + Resend SMTP + Gmail "Send mail as" fully working for `support@dupsweep.com`
+- [ ] Repeat email setup (Email Routing rule, Resend domain add, Gmail Send-as) for `support@singleuseapps.com`
 - [ ] Stripe test + live keys
 - [ ] PayPal sandbox + live app credentials
-- [ ] Resend signup + API key + domain-verification DNS records (via Cloudflare)
 - [ ] Confirm pricing
 - [ ] Create the `singleuseapps` GitHub org, transfer/create repos per the layout above
 - [ ] Scaffold `license-service` (algorithm, DB, Stripe/PayPal endpoints + webhooks, Resend integration, PM2 + nginx proxy)
