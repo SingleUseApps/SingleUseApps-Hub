@@ -107,12 +107,35 @@ Payment is implemented **once**, embedded on every site so it feels native to ea
 
 ## 7. Backend — License Service
 
-- Small Node/Express app, deployed to the same VPS (`websitehost`, Hetzner, Tailscale IP `100.93.94.115`, SSH alias `hetzner`) at `/var/www/license-service`.
-- Run under **PM2** (mirrors the existing MetaStrip service pattern on that box), nginx-proxied at `/api/` on the Hub's server block.
-- Holds `SALT_MAP` and the key algorithm server-side only.
-- SQLite (or CSV, for parity with the desktop tool) table: `email, name, appId, provider, payment_ref, key, timestamp` — enforces one key per successful payment (dedupe on `payment_ref`, so retried webhooks or refreshed success pages don't double-issue).
-- Stripe and PayPal each get: a create-checkout endpoint + a signature-verified webhook handler, both converging on one internal `issueKey()` function.
-- Sends the key via **Resend** on successful payment, and the same key is shown on the success page once the widget polls/fetches it.
+**Location decision (2026-08-16):** building as a `license-service/` subfolder inside this same `SingleUseApps-Portal` repo, rather than waiting on the GitHub org migration (put on hold — see §10). Can move into its own repo later without losing history if the org migration happens.
+
+**Scope decision (2026-08-16):** Stripe-only for the first working version — PayPal is on hold until Stripe is proven end-to-end (see §5). The backend's internal `issueKey()` function is provider-agnostic, so adding PayPal later only means a second checkout/webhook route, not a rewrite.
+
+### Implementation plan
+
+**Phase 1 — backend core**
+1. `license-service/` — Node + Express app.
+2. Port the algorithm (`seed` + `SHA256(seed+email+salt)[:6]`) server-side, using the existing `SALT_MAP` values from `script.js` for the current 4 apps. **Open item:** DupSweep needs its own new salt value, not yet generated.
+3. SQLite DB (via e.g. `better-sqlite3`), one table: `email, name, appId, provider, payment_ref, key, created_at` — `payment_ref` unique, so a retried webhook or refreshed success page can't double-issue a key.
+4. Endpoints:
+   - `POST /api/checkout/stripe` — body `{ appId, name, email }` → creates a Stripe Checkout Session (Embedded mode), returns its `client_secret`.
+   - `POST /api/webhooks/stripe` — Stripe-signature-verified; on `checkout.session.completed`, runs `issueKey()`, stores the row, sends the email via Resend.
+   - `GET /api/license/:sessionId` — polled by the frontend after payment; returns `{status: "pending"}` until the webhook has processed, then `{status: "ready", key}`.
+5. CORS allow-list: `dupsweep.com`, `singleuseapps.com` (extend per new domain later).
+6. Env vars (never committed): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (generated after step 8 below), `RESEND_API_KEY`, `SALT_MAP` values.
+
+**Phase 2 — deployment**
+7. PM2 `ecosystem.config.js`, deployed to `/var/www/license-service` on the VPS (mirrors the MetaStrip pattern), listening on an internal port (e.g. `127.0.0.1:4002`, avoiding MetaStrip's `4001`).
+8. New nginx server block + a Let's Encrypt cert (via certbot, same as the existing `singleuseapps-portal` config) for **`singleuseapps.com`**, proxying `/api/` to that internal port — this makes the backend reachable at `https://singleuseapps.com/api/...` before the actual Hub *frontend* content exists there, the same way `/metastrip/` already coexists on `luisdanielsilva.com` today.
+9. In the Stripe Dashboard, register the webhook endpoint `https://singleuseapps.com/api/webhooks/stripe` → generates the real `STRIPE_WEBHOOK_SECRET` to add to the VPS env.
+10. GitHub Actions: extend the existing deploy workflow (or add a second one scoped to `license-service/**` changes) to rsync just that subfolder to the VPS and restart the PM2 process.
+
+**Phase 3 — first end-to-end test**
+11. Build a minimal test page (not the full styled widget yet) that calls `/api/checkout/stripe` and mounts Stripe's Embedded Checkout element, to validate the whole chain before investing in the polished, reusable Buy Widget.
+12. Run a full Stripe test-mode purchase (test card `4242 4242 4242 4242`) → confirm webhook fires → key generated → row stored → email arrives via Resend → test page shows the key.
+
+**Phase 4 — polish**
+13. Only once Phase 3 works: build the real shared Buy Widget (styled, embeddable, config-driven) to replace the minimal test page, and embed it on the DupSweep landing page.
 
 ## 8. Email infrastructure
 
@@ -155,7 +178,7 @@ Each app domain gets its own branded address (`support@dupsweep.com`, `support@s
 
 Bought on Amen.pt (2026-08-15): `dupsweep.com`, `singleuseapps.com`, `singleuseapps.pt`.
 
-## 10. GitHub organization — target, not yet executed
+## 10. GitHub organization — on hold, target for later
 
 Create a `singleuseapps` GitHub Organization to separate the product line from the personal `luisdanielsilva` account. Confirmed **free** (Org Free tier = unlimited private repos, same as personal; cost only applies to Actions minutes beyond 2,000/month or advanced permissions/SSO — none relevant solo). Benefits: org-level shared secrets (VPS SSH key, Stripe/PayPal/Resend keys set once, used by every repo's Actions workflow instead of duplicated per-repo), a clean personal/business boundary, room for collaborators later. Repo transfers preserve history/issues/stars; old URLs redirect.
 
@@ -172,6 +195,8 @@ singleuseapps/  (org)
 
 Considered a cross-repo GitHub Project board as a lighter alternative — rejected as a *substitute* for the org, since a Project only gives shared task visibility, it doesn't move repo ownership or share secrets. Could still be added later, on top of the org, purely for cross-repo task tracking.
 
+**Put on hold (2026-08-16):** decided to build `license-service` directly inside this repo as a subfolder instead, so backend work isn't blocked on the org migration. Revisit once there's more to organize.
+
 ## 11. DupSweep landing page
 
 Build now, at `dupsweep.com`, in parallel with the still-pending backend — using a placeholder/fake "Buy" button (same pattern as the current Portal's `simulatePayment()`) rather than waiting on `license-service` to exist, so content/design work isn't blocked. The placeholder gets swapped for the real embedded Buy Widget once the backend is built.
@@ -183,14 +208,18 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Finish `singleuseapps.com` Cloudflare migration — Active
 - [x] Cloudflare Email Routing + Resend SMTP + Gmail "Send mail as" fully working for `support@dupsweep.com`
 - [x] Cloudflare Email Routing (receiving only) working for `support@singleuseapps.com`
-- [ ] Stripe test + live keys
-- [ ] PayPal sandbox + live app credentials
+- [x] Stripe test keys obtained
+- [ ] ~~PayPal sandbox + live app credentials~~ — on hold until Stripe is proven working
+- [ ] ~~Create the `singleuseapps` GitHub org~~ — on hold, `license-service` building in this repo instead
+- [ ] Generate a DupSweep salt for `SALT_MAP`
+- [ ] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS)
+- [ ] Deploy `license-service` to the VPS (PM2 + new nginx server block/cert for `singleuseapps.com` + GitHub Actions)
+- [ ] Register the Stripe webhook endpoint → get `STRIPE_WEBHOOK_SECRET`
 - [ ] Confirm pricing
-- [ ] Create the `singleuseapps` GitHub org, transfer/create repos per the layout above
-- [ ] Scaffold `license-service` (algorithm, DB, Stripe/PayPal endpoints + webhooks, Resend integration, PM2 + nginx proxy)
-- [ ] Build the shared Buy Widget
+- [ ] Build a minimal test page, run a full Stripe test-mode purchase end-to-end
+- [ ] Build the real shared Buy Widget (only after the test page proves the flow)
 - [ ] Build the DupSweep landing page (needs example site + assets from user)
 - [ ] Build/migrate the Apps Hub site to `singleuseapps.com`
 - [ ] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
-- [ ] Full test-mode run-through (Stripe test + PayPal sandbox) → confirm a portal-issued key validates in a real app build
+- [ ] Add PayPal once Stripe is proven
 - [ ] Go live: swap to live keys/webhooks
