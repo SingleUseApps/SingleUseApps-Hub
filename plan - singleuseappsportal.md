@@ -93,7 +93,8 @@ key       = "XXXX-XXXX-XXXX-XXXX-XXXX-SIGSIG"   (seed in 5 groups of 4, then the
 - Real, webhook-verified confirmation before any key is issued.
 - **Stripe test keys obtained (2026-08-16).** Publishable key: `pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve` (safe to embed in frontend code). The matching secret key is intentionally **not** recorded in this file — kept in local memory only, never committed to git; moves to a VPS environment variable once `license-service` is scaffolded. A webhook signing secret (`whsec_...`) is still needed, generated once a real webhook endpoint URL exists to register with Stripe.
 - **PayPal on hold (2026-08-16):** deliberately deferring PayPal Developer sandbox credentials until the Stripe path is built and confirmed working end-to-end (Buy Widget → checkout → webhook → key generated → email delivered) — avoids building two payment integrations in parallel before either is proven.
-- **Still needed:** confirmed pricing (assumed 5€+ = lifetime license, same as current Portal copy, unless changed), Stripe live keys (later, once ready for real payments), PayPal credentials (once Stripe is proven).
+- **Pricing confirmed (2026-08-16):** 5€+ (pay-what-you-want, minimum 5€) for a lifetime license — same model as the current apps, applies to DupSweep too.
+- **Still needed:** Stripe live keys (later, once ready for real payments), PayPal credentials (once Stripe is proven).
 
 ## 6. Shared "Buy Widget"
 
@@ -201,7 +202,7 @@ Considered a cross-repo GitHub Project board as a lighter alternative — reject
 
 Build now, at `dupsweep.com`, in parallel with the still-pending backend — using a placeholder/fake "Buy" button (same pattern as the current Portal's `simulatePayment()`) rather than waiting on `license-service` to exist, so content/design work isn't blocked. The placeholder gets swapped for the real embedded Buy Widget once the backend is built.
 
-**Still needed from user:** an example site to style it after, DupSweep screenshots (or these can be captured by running the app), feature copy, pricing confirmation.
+**Still needed from user:** an example site to style it after, DupSweep screenshots (or these can be captured by running the app), feature copy.
 
 ## 12. Open items / next steps
 
@@ -215,7 +216,7 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [ ] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS)
 - [ ] Deploy `license-service` to the VPS (PM2 + new nginx server block/cert for `singleuseapps.com` + GitHub Actions)
 - [ ] Register the Stripe webhook endpoint → get `STRIPE_WEBHOOK_SECRET`
-- [ ] Confirm pricing
+- [x] Confirm pricing — 5€+ lifetime license, same as existing apps
 - [ ] Build a minimal test page, run a full Stripe test-mode purchase end-to-end
 - [ ] Build the real shared Buy Widget (only after the test page proves the flow)
 - [ ] Build the DupSweep landing page (needs example site + assets from user)
