@@ -21,9 +21,17 @@ db.exec(`
   )
 `);
 
+// Migration: add `source` (the originating site's Origin, e.g.
+// "https://dupsweep.com") to installs that predate this column.
+try {
+  db.exec(`ALTER TABLE licenses ADD COLUMN source TEXT`);
+} catch (err) {
+  if (!/duplicate column/i.test(err.message)) throw err;
+}
+
 const insertStmt = db.prepare(`
-  INSERT INTO licenses (payment_ref, provider, app_id, name, email, key)
-  VALUES (@paymentRef, @provider, @appId, @name, @email, @key)
+  INSERT INTO licenses (payment_ref, provider, app_id, name, email, key, source)
+  VALUES (@paymentRef, @provider, @appId, @name, @email, @key, @source)
 `);
 const findByPaymentRefStmt = db.prepare(`SELECT * FROM licenses WHERE payment_ref = ?`);
 
@@ -32,10 +40,10 @@ const findByPaymentRefStmt = db.prepare(`SELECT * FROM licenses WHERE payment_re
 // must not mint a second key for the same payment). `isNew` tells the caller
 // whether this call actually inserted a row, so it knows whether to send
 // the license email again.
-export function insertLicense({ paymentRef, provider, appId, name, email, key }) {
+export function insertLicense({ paymentRef, provider, appId, name, email, key, source }) {
   const existing = findByPaymentRefStmt.get(paymentRef);
   if (existing) return { license: existing, isNew: false };
-  insertStmt.run({ paymentRef, provider, appId, name, email, key });
+  insertStmt.run({ paymentRef, provider, appId, name, email, key, source: source || null });
   return { license: findByPaymentRefStmt.get(paymentRef), isNew: true };
 }
 

@@ -20,9 +20,9 @@ router.post("/webhooks/stripe", async (req, res) => {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const { appId, name, email } = session.metadata || {};
+    const { appId, name, email, source } = session.metadata || {};
     try {
-      await issueKey({ paymentRef: session.id, provider: "stripe", appId, name, email });
+      await issueKey({ paymentRef: session.id, provider: "stripe", appId, name, email, source });
     } catch (err) {
       // Log and 500 so Stripe retries — don't silently swallow a failed issuance.
       console.error("issueKey failed for session", session.id, err);

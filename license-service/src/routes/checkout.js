@@ -40,7 +40,11 @@ router.post("/checkout/stripe", async (req, res) => {
         quantity: 1,
       },
     ],
-    metadata: { appId, name: name.trim(), email: email.trim().toLowerCase() },
+    // `source` records which site the customer actually bought from (the
+    // widget may be embedded on several sites selling the same app) — the
+    // webhook only sees this metadata, not the original request, so it has
+    // to travel through Stripe rather than be re-derived later.
+    metadata: { appId, name: name.trim(), email: email.trim().toLowerCase(), source: origin },
     return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
   });
 
