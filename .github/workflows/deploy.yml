@@ -22,23 +22,31 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
+      - name: Wait for Tailscale connectivity to VPS
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            tailscale ping --timeout=5s --c=1 ${{ secrets.VPS_HOST }} && break
+            echo "tailscale ping attempt $i failed, retrying in 5s (route may still be settling)..."
+            sleep 5
+          done
+
       - name: Add VPS to known_hosts
         run: |
           mkdir -p ~/.ssh
           for i in 1 2 3 4 5; do
-            ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null && break
-            echo "ssh-keyscan attempt $i failed, retrying in 5s (Tailscale route may still be settling)..."
+            ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null && break
+            echo "ssh-keyscan attempt $i failed, retrying in 5s..."
             sleep 5
           done
 
       - name: Prepare Directory
         run: |
-          ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} 'sudo mkdir -p /var/www/singleuseapps-portal/ && sudo chown -R deploy:www-data /var/www/singleuseapps-portal/'
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo mkdir -p /var/www/singleuseapps-portal/ && sudo chown -R deploy:www-data /var/www/singleuseapps-portal/'
 
       - name: Deploy via Rsync
         run: |
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/
 
       - name: Restart Nginx
         run: |
-          ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx'
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx'
