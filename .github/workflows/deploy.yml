@@ -25,7 +25,11 @@ jobs:
       - name: Add VPS to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          for i in 1 2 3 4 5; do
+            ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null && break
+            echo "ssh-keyscan attempt $i failed, retrying in 5s (Tailscale route may still be settling)..."
+            sleep 5
+          done
 
       - name: Prepare Directory
         run: |
