@@ -163,8 +163,12 @@ Reused the existing, already-live Portal support-form instead of a separate thro
 
 Verified fully working end-to-end: a real push went green on every step, and the live site was confirmed to actually reflect the deploy.
 
-**Phase 4 — polish, still open**
-15. Build the real, styled, embeddable Buy Widget (Phase 3 reused the Portal's own form directly instead — revisit when building per-app sites like DupSweep's, per the multi-site plan).
+**Phase 4 — polish, in progress (2026-08-17)**
+
+15. Build the real, styled, embeddable Buy Widget (Phase 3 reused the Portal's own form directly instead — this is for per-app sites like DupSweep's, per the multi-site plan).
+    - **Decided: no separate repo for the widget.** It's one static JS file, not an app with its own dependency/release lifecycle — `license-service` already has a stable deployed domain (`singleuseapps.com`) that can serve it statically alongside the API. Revisit only if it later needs independent versioning/build tooling.
+    - **Added purchase-source tracking first**, since it's directly relevant to a multi-site widget: the same widget could be embedded on several sites selling the same app, so `app_id` alone tells you *what* was bought but not *which site* the customer used. Added a `source` column (`license-service`), populated automatically from the same trusted `Origin` header already used for `return_url` — travels through Stripe as session metadata since the webhook only sees that, not the original request. No widget config needed; can't be spoofed by the client. Migration tested against a DB with pre-existing rows (old rows correctly backfill to `source=null`). Verified live with two sessions from two different origins producing two different `source` values.
+    - Once built, the Portal's own support form should switch to using the widget too, replacing the page-specific Phase 3 code, so there's one implementation everywhere.
 16. PayPal (on hold).
 
 ## 8. Email infrastructure
