@@ -24,41 +24,51 @@ jobs:
 
       - name: Wait for Tailscale connectivity to VPS
         run: |
-          for i in 1 2 3 4 5 6 7 8 9 10; do
-            tailscale ping --timeout=5s --c=1 ${{ secrets.VPS_HOST }} && break
-            echo "tailscale ping attempt $i failed, retrying in 5s (route may still be settling)..."
-            sleep 5
+          ok=false
+          for i in $(seq 1 15); do
+            if tailscale ping --timeout=5s --c=1 ${{ secrets.VPS_HOST }}; then ok=true; break; fi
+            echo "tailscale ping attempt $i failed, retrying in 8s (route may still be settling)..."
+            sleep 8
           done
+          $ok || { echo "::error::Tailscale never reached the VPS — failing the job instead of continuing blind."; exit 1; }
 
       - name: Add VPS to known_hosts
         run: |
           mkdir -p ~/.ssh
-          for i in 1 2 3 4 5; do
-            ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null && break
-            echo "ssh-keyscan attempt $i failed, retrying in 5s..."
-            sleep 5
+          ok=false
+          for i in $(seq 1 10); do
+            if ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null; then ok=true; break; fi
+            echo "ssh-keyscan attempt $i failed, retrying in 8s..."
+            sleep 8
           done
+          $ok || { echo "::error::ssh-keyscan never succeeded."; exit 1; }
 
       - name: Prepare Directory
         run: |
-          for i in 1 2 3 4 5; do
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo mkdir -p /var/www/singleuseapps-portal/ && sudo chown -R deploy:www-data /var/www/singleuseapps-portal/' && break
-            echo "ssh attempt $i failed, retrying in 5s (intermittent Tailscale packet loss on fresh ephemeral nodes)..."
-            sleep 5
+          ok=false
+          for i in $(seq 1 10); do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo mkdir -p /var/www/singleuseapps-portal/ && sudo chown -R deploy:www-data /var/www/singleuseapps-portal/'; then ok=true; break; fi
+            echo "ssh attempt $i failed, retrying in 8s (intermittent Tailscale packet loss on fresh ephemeral nodes)..."
+            sleep 8
           done
+          $ok || { echo "::error::Could not prepare the target directory after 10 attempts."; exit 1; }
 
       - name: Deploy via Rsync
         run: |
-          for i in 1 2 3 4 5; do
-            rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/ && break
-            echo "rsync attempt $i failed, retrying in 5s..."
-            sleep 5
+          ok=false
+          for i in $(seq 1 10); do
+            if rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/; then ok=true; break; fi
+            echo "rsync attempt $i failed, retrying in 8s..."
+            sleep 8
           done
+          $ok || { echo "::error::rsync never completed after 10 attempts — site was NOT updated."; exit 1; }
 
       - name: Restart Nginx
         run: |
-          for i in 1 2 3 4 5; do
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx' && break
-            echo "ssh attempt $i failed, retrying in 5s..."
-            sleep 5
+          ok=false
+          for i in $(seq 1 10); do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx'; then ok=true; break; fi
+            echo "ssh attempt $i failed, retrying in 8s..."
+            sleep 8
           done
+          $ok || { echo "::error::Could not restart nginx after 10 attempts."; exit 1; }
