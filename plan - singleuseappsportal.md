@@ -148,12 +148,20 @@ DNS: added the missing A record for `singleuseapps.com`/`www` → the VPS IP in 
     - **Verified live with real calls:** `/api/health` and `/api/checkout/stripe` both work through the production URL (a real Stripe test-mode session was created). Installed the Stripe CLI and ran `stripe trigger checkout.session.completed` against the live endpoint — confirmed via server logs that webhook **signature verification passed** on a real Stripe-signed event, and the handler correctly rejected it for missing custom metadata (expected, since the CLI's generic fixture doesn't carry our `appId`/`email`) without crashing.
 11. **Still open:** GitHub Actions automation for `license-service/**` deploys (currently deployed manually) — not blocking, revisit when convenient.
 
-**Phase 3 — first end-to-end test**
-12. Build a minimal test page (not the full styled widget yet) that calls `/api/checkout/stripe` and mounts Stripe's Embedded Checkout element, to validate the whole chain before investing in the polished, reusable Buy Widget.
-13. Run a full Stripe test-mode purchase (test card `4242 4242 4242 4242`) → confirm webhook fires → key generated → row stored → email arrives via Resend → test page shows the key.
+**Phase 3 — complete (2026-08-16)**
 
-**Phase 4 — polish**
-13. Only once Phase 3 works: build the real shared Buy Widget (styled, embeddable, config-driven) to replace the minimal test page, and embed it on the DupSweep landing page.
+Reused the existing, already-live Portal support-form instead of a separate throwaway test page — this also directly satisfied the long-standing "remove old client-side key-gen code" checklist item.
+
+12. `checkout.js`: `return_url` now derived from the request's Origin header rather than hardcoded to `singleuseapps.com`, so this works regardless of which allowed domain the Portal currently lives on. Added `luisdanielsilva.com`/`www` to `ALLOWED_ORIGINS` (temporary, since that's where the Portal deploys today).
+13. `index.html`/`script.js`: removed all client-side key generation (`SALT_MAP`, `calculateSignature`) and the fake `simulatePayment()`. Form now collects name/email/app first; "Pay with Stripe" calls `/api/checkout/stripe` and mounts Stripe's real Embedded Checkout inline; on return (`?session_id=...`), polls `/api/license/:sessionId` until ready. PayPal button removed from the UI for now.
+14. **Ran a full, real, browser-driven Stripe test-mode purchase** — confirmed correct 5€ charge, webhook fired, and a real key was issued and displayed. This is the first genuine end-to-end proof of the whole chain (Stripe CLI's earlier `trigger` only tested webhook plumbing in isolation, not a real user checkout).
+
+**Deployment hiccup found (unrelated to this work):** GitHub Actions deploy has been intermittently failing since 2026-08-15 evening — invalid `TAILSCALE_AUTHKEY`. Deployed manually via `rsync` over the existing SSH access to unblock testing (excluding `license-service/`, since the workflow's blanket rsync would otherwise dump backend source — no secrets, `.env` is gitignored, but needless clutter — into the static site's public root). User will fix the Tailscale key later; I can update the GitHub secret once they have a new one.
+
+**Phase 4 — polish, still open**
+15. Build the real, styled, embeddable Buy Widget (Phase 3 reused the Portal's own form directly instead — revisit when building per-app sites like DupSweep's, per the multi-site plan).
+16. Fix the GitHub Actions deploy pipeline (Tailscale key).
+17. PayPal (on hold).
 
 ## 8. Email infrastructure
 
@@ -234,12 +242,12 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
 - [x] Deploy `license-service` to the VPS (PM2 + nginx server block/cert for `singleuseapps.com`) — verified live with real Stripe test-mode calls
 - [x] Register the Stripe webhook endpoint → `STRIPE_WEBHOOK_SECRET` — signature verification confirmed working on a real Stripe-signed event
-- [ ] GitHub Actions automation for `license-service/**` deploys (currently manual)
+- [ ] Fix GitHub Actions deploy pipeline — `TAILSCALE_AUTHKEY` invalid, deferred by user; also covers automating `license-service/**` deploys (currently manual)
 - [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
-- [ ] Build a minimal test page, run a full Stripe test-mode purchase end-to-end
-- [ ] Build the real shared Buy Widget (only after the test page proves the flow)
+- [x] Ran a full, real, browser-driven Stripe test-mode purchase end-to-end — confirmed correct 5€ charge, key issued and displayed
+- [x] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
+- [ ] Build the real shared Buy Widget (Phase 3 reused the Portal's own form directly instead; revisit for per-app sites)
 - [ ] Build the DupSweep landing page (needs example site + assets from user)
 - [ ] Build/migrate the Apps Hub site to `singleuseapps.com`
-- [ ] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
 - [ ] Add PayPal once Stripe is proven
 - [ ] Go live: swap to live keys/webhooks
