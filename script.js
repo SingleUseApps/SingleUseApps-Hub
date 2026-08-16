@@ -113,8 +113,16 @@ function selectApp(appId) {
             .catch(() => {});
     }
 
-    // Auto-select in the generator dropdown for convenience
-    document.getElementById('appSelect').value = appId;
+    // Auto-select in the buy dropdown for convenience, and keep the widget in sync
+    // (only if this app is actually one of the buy options — e.g. FileLister Tauri
+    // isn't, so the dropdown/widget just keep whatever was already selected).
+    const appSelect = document.getElementById('appSelect');
+    appSelect.value = appId;
+    if (appSelect.value === appId) {
+        const widget = document.getElementById('buyWidget');
+        widget.setAttribute('data-app', appId);
+        window.SUAWBuyWidget.init(widget);
+    }
 }
 
 function hideDetails() {
@@ -122,97 +130,16 @@ function hideDetails() {
 }
 
 // --- Payment & License Issuance ---
-// Key generation happens server-side (license-service) only — never in this
-// file. See SingleUseApps-KeyGen / license-service for the algorithm.
+// The actual payment/checkout/key-issuance logic lives entirely in the
+// shared Buy Widget (buy-widget.js, served from license-service) — the
+// same embed used on every app's own site. This page only needs to keep
+// the widget in sync with the app the visitor picks from the dropdown.
 
-const API_BASE = "https://singleuseapps.com/api";
-const STRIPE_PUBLISHABLE_KEY = "pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve";
-const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function showPayError(message) {
-    const el = document.getElementById('payError');
-    el.innerText = message;
-    el.classList.remove('hidden');
-}
-
-document.getElementById('payBtn').addEventListener('click', async () => {
-    const name = document.getElementById('custName').value.trim();
-    const email = document.getElementById('custEmail').value.trim();
-    const appId = document.getElementById('appSelect').value;
-
-    document.getElementById('payError').classList.add('hidden');
-
-    if (!name || !email) {
-        showPayError("Please provide your name and e-mail.");
-        return;
-    }
-    if (!emailRegex.test(email)) {
-        showPayError("Please enter a valid e-mail address.");
-        return;
-    }
-
-    const btn = document.getElementById('payBtn');
-    btn.disabled = true;
-    btn.innerText = "Loading checkout…";
-
-    try {
-        const res = await fetch(`${API_BASE}/checkout/stripe`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ appId, name, email })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Could not start checkout.");
-
-        document.getElementById('buyForm').classList.add('hidden');
-        document.getElementById('checkoutContainer').classList.remove('hidden');
-
-        const checkout = await stripe.initEmbeddedCheckout({ clientSecret: data.clientSecret });
-        checkout.mount('#checkoutContainer');
-    } catch (err) {
-        showPayError(err.message || "Something went wrong. Please try again.");
-        btn.disabled = false;
-        btn.innerText = "Pay with Stripe — 5€";
-    }
+document.getElementById('appSelect').addEventListener('change', (e) => {
+    const widget = document.getElementById('buyWidget');
+    widget.setAttribute('data-app', e.target.value);
+    window.SUAWBuyWidget.init(widget);
 });
-
-// After Stripe redirects back with ?session_id=..., poll until the webhook
-// has processed the payment and a key exists.
-(function checkForReturnFromCheckout() {
-    const sessionId = new URLSearchParams(window.location.search).get('session_id');
-    if (!sessionId) return;
-
-    document.getElementById('buyForm').classList.add('hidden');
-    document.getElementById('pendingBox').classList.remove('hidden');
-    document.getElementById('support').scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    const poll = setInterval(async () => {
-        try {
-            const res = await fetch(`${API_BASE}/license/${sessionId}`);
-            const data = await res.json();
-            if (data.status === 'ready') {
-                clearInterval(poll);
-                document.getElementById('pendingBox').classList.add('hidden');
-                document.getElementById('finalKey').innerText = data.key;
-                document.getElementById('resultBox').classList.remove('hidden');
-            }
-        } catch (err) {
-            // Transient network hiccup — keep polling.
-        }
-    }, 2000);
-})();
-
-// Helper: Copy Key
-function copyKey() {
-    const key = document.getElementById('finalKey').innerText;
-    navigator.clipboard.writeText(key).then(() => {
-        const btn = document.querySelector('.copy-small');
-        btn.innerText = "✓";
-        setTimeout(() => btn.innerText = "📋", 2000);
-    });
-}
 
 function openContact() {
     document.getElementById('contactModal').classList.remove('hidden');

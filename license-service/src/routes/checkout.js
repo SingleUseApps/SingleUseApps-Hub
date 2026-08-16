@@ -10,7 +10,7 @@ const router = Router();
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 router.post("/checkout/stripe", async (req, res) => {
-  const { appId, name, email } = req.body || {};
+  const { appId, name, email, returnTo } = req.body || {};
 
   if (!name?.trim() || !email?.trim() || !emailRegex.test(email.trim())) {
     return res.status(400).json({ error: "Valid name and email are required." });
@@ -23,6 +23,20 @@ router.post("/checkout/stripe", async (req, res) => {
   // Return to whichever allowed page actually called this — req.headers.origin
   // is already validated by the cors() middleware, so it's trusted here.
   const origin = req.headers.origin || "https://singleuseapps.com";
+
+  // Prefer the exact page the widget was on (a page could have more than one
+  // widget instance, e.g. a future Hub listing several apps) — but only if
+  // it's actually on the trusted origin, never trust an arbitrary client URL.
+  let returnBase = `${origin}/`;
+  if (returnTo) {
+    try {
+      const parsed = new URL(returnTo);
+      if (parsed.origin === origin) returnBase = returnTo;
+    } catch {
+      // Invalid URL from the client — ignore, keep the safe default.
+    }
+  }
+  const separator = returnBase.includes("?") ? "&" : "?";
 
   // Fixed price for now. "Pay what you want" (custom_unit_amount) requires a
   // pre-created Stripe Price object referenced by ID — Checkout Sessions don't
@@ -45,7 +59,7 @@ router.post("/checkout/stripe", async (req, res) => {
     // webhook only sees this metadata, not the original request, so it has
     // to travel through Stripe rather than be re-derived later.
     metadata: { appId, name: name.trim(), email: email.trim().toLowerCase(), source: origin },
-    return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
+    return_url: `${returnBase}${separator}session_id={CHECKOUT_SESSION_ID}&suaw_app=${encodeURIComponent(appId)}`,
   });
 
   res.json({ clientSecret: session.client_secret });

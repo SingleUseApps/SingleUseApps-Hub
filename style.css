@@ -361,26 +361,6 @@ h1 {
     color: var(--primary);
 }
 
-.payment-options {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    margin-bottom: 40px;
-}
-
-.payment-btn {
-    padding: 16px 32px;
-    border-radius: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.payment-btn:hover { transform: scale(1.05); }
-
-.payment-btn.paypal { background: #FFC439; color: #003087; }
-.payment-btn.stripe { background: #635BFF; color: white; }
-
 .input-row {
     display: flex;
     gap: 12px;
@@ -427,16 +407,6 @@ input:focus, select:focus, textarea:focus {
 }
 
 footer { padding: 64px 0; text-align: center; color: var(--text-dim); font-size: 13px; }
-
-.key-result {
-    background: rgba(0, 122, 255, 0.1);
-    border: 1px dashed var(--primary);
-    padding: 16px;
-    border-radius: 8px;
-    margin: 24px 0;
-}
-
-#finalKey { font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 700; }
 
 /* Detail download area (single button or per-platform buttons + live version) */
 .detail-actions { text-align: center; }
