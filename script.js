@@ -121,83 +121,88 @@ function hideDetails() {
     document.getElementById('details').classList.add('hidden');
 }
 
-// --- Payment & Activation Logic ---
+// --- Payment & License Issuance ---
+// Key generation happens server-side (license-service) only — never in this
+// file. See SingleUseApps-KeyGen / license-service for the algorithm.
 
-function simulatePayment(provider) {
-    const btn = event.currentTarget;
-    const originalText = btn.innerHTML;
-    
-    btn.innerHTML = `<span>⏳ Verifying ${provider}...</span>`;
-    btn.style.opacity = "0.7";
-    btn.style.pointerEvents = "none";
+const API_BASE = "https://singleuseapps.com/api";
+const STRIPE_PUBLISHABLE_KEY = "pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve";
+const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
 
-    // Simulate payment processing delay
-    setTimeout(() => {
-        document.getElementById('generatorContainer').classList.add('unlocked');
-        btn.innerHTML = `<span>✅ Support Confirmed!</span>`;
-        btn.style.background = "#34C759";
-        btn.style.color = "white";
-        
-        // Scroll to the unlocked generator
-        document.getElementById('generatorContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 2000);
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function showPayError(message) {
+    const el = document.getElementById('payError');
+    el.innerText = message;
+    el.classList.remove('hidden');
 }
 
-// --- License Generation Logic ---
-
-const SALT_MAP = {
-    filelister: "FileLister-Secret-Salt-2026-Porto",
-    knockapp: "KnockApp-Secret-Salt-2026-Standard",
-    visualexif: "VisualExif-Secret-Salt-2026-Exif",
-    filelistertauri: "FileListerTauri-Secret-Salt-2026-Cross"
-};
-
-document.getElementById('generateBtn').addEventListener('click', async () => {
+document.getElementById('payBtn').addEventListener('click', async () => {
     const name = document.getElementById('custName').value.trim();
     const email = document.getElementById('custEmail').value.trim();
     const appId = document.getElementById('appSelect').value;
 
+    document.getElementById('payError').classList.add('hidden');
+
     if (!name || !email) {
-        alert("Please provide your name and e-mail for registration.");
+        showPayError("Please provide your name and e-mail.");
         return;
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        alert("Please enter a valid e-mail address.");
+        showPayError("Please enter a valid e-mail address.");
         return;
     }
 
-    // Generator Logic
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let seed = "";
-    for (let i = 0; i < 20; i++) {
-        seed += letters.charAt(Math.floor(Math.random() * letters.length));
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.innerText = "Loading checkout…";
+
+    try {
+        const res = await fetch(`${API_BASE}/checkout/stripe`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ appId, name, email })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not start checkout.");
+
+        document.getElementById('buyForm').classList.add('hidden');
+        document.getElementById('checkoutContainer').classList.remove('hidden');
+
+        const checkout = await stripe.initEmbeddedCheckout({ clientSecret: data.clientSecret });
+        checkout.mount('#checkoutContainer');
+    } catch (err) {
+        showPayError(err.message || "Something went wrong. Please try again.");
+        btn.disabled = false;
+        btn.innerText = "Pay with Stripe — 5€";
     }
-
-    const salt = SALT_MAP[appId];
-    const signature = await calculateSignature(seed, salt);
-
-    let formattedKey = "";
-    for (let i = 0; i < 5; i++) {
-        formattedKey += seed.substring(i * 4, i * 4 + 4) + "-";
-    }
-    formattedKey += signature;
-
-    // Display Result
-    document.getElementById('finalKey').innerText = formattedKey;
-    document.getElementById('resultBox').classList.remove('hidden');
-    document.getElementById('mailBtn').classList.remove('hidden');
 });
 
-async function calculateSignature(seed, salt) {
-    const input = seed + salt;
-    const msgBuffer = new TextEncoder().encode(input);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-    return hashHex.substring(0, 4);
-}
+// After Stripe redirects back with ?session_id=..., poll until the webhook
+// has processed the payment and a key exists.
+(function checkForReturnFromCheckout() {
+    const sessionId = new URLSearchParams(window.location.search).get('session_id');
+    if (!sessionId) return;
+
+    document.getElementById('buyForm').classList.add('hidden');
+    document.getElementById('pendingBox').classList.remove('hidden');
+    document.getElementById('support').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const poll = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/license/${sessionId}`);
+            const data = await res.json();
+            if (data.status === 'ready') {
+                clearInterval(poll);
+                document.getElementById('pendingBox').classList.add('hidden');
+                document.getElementById('finalKey').innerText = data.key;
+                document.getElementById('resultBox').classList.remove('hidden');
+            }
+        } catch (err) {
+            // Transient network hiccup — keep polling.
+        }
+    }, 2000);
+})();
 
 // Helper: Copy Key
 function copyKey() {
@@ -208,19 +213,6 @@ function copyKey() {
         setTimeout(() => btn.innerText = "📋", 2000);
     });
 }
-
-// Helper: Open Email
-document.getElementById('mailBtn').addEventListener('click', () => {
-    const name = document.getElementById('custName').value.trim();
-    const email = document.getElementById('custEmail').value.trim();
-    const key = document.getElementById('finalKey').innerText;
-    const appName = APPS[document.getElementById('appSelect').value].name;
-
-    const subject = encodeURIComponent(`Your ${appName} Lifetime License`);
-    const body = encodeURIComponent(`Hello ${name},\n\nThank you for supporting our development!\n\nYour Pro License Key for ${appName} is: ${key}\n\nTo activate, open the app and go to the license menu.\n\nEnjoy your premium software!\n- Single Use Apps Team`);
-    
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-});
 
 function openContact() {
     document.getElementById('contactModal').classList.remove('hidden');

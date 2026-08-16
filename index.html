@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <div class="blob-container">
@@ -128,42 +129,40 @@
             <div class="support-card glass-card">
                 <div class="support-header">
                     <h2>Support Development</h2>
-                    <p>Donate <span class="highlight-price">5€</span> or more to unlock a Lifetime Pro License for any app.</p>
+                    <p>Pay <span class="highlight-price">5€</span> to unlock a Lifetime Pro License for any app.</p>
                 </div>
                 
-                <div class="payment-options">
-                    <div class="payment-btn paypal" onclick="simulatePayment('PayPal')">Pay with <span>PayPal</span></div>
-                    <div class="payment-btn stripe" onclick="simulatePayment('Stripe')">Pay with <span>Stripe</span></div>
+                <!-- Buy form -->
+                <div id="buyForm" class="generator-content">
+                    <div class="input-row">
+                        <input type="text" id="custName" placeholder="Full Name">
+                        <input type="email" id="custEmail" placeholder="E-mail Address">
+                    </div>
+                    <div class="input-row">
+                        <select id="appSelect">
+                            <option value="filelister">📁 FileLister Pro</option>
+                            <option value="knockapp">🔊 KnockApp</option>
+                            <option value="visualexif">🛡️ VisualExif</option>
+                            <option value="filelistertauri">🗂️ FileLister Tauri</option>
+                        </select>
+                    </div>
+                    <div class="payment-options">
+                        <button id="payBtn" class="payment-btn stripe">Pay with <span>Stripe</span> — 5€</button>
+                    </div>
+                    <p id="payError" class="hidden" style="color: #ff6b6b; font-size: 13px; margin-top: 10px;"></p>
                 </div>
 
-                <!-- Generator (Locked initially) -->
-                <div id="generatorContainer" class="generator-locked">
-                    <div class="lock-overlay">
-                        <div class="lock-icon">🔒</div>
-                        <p>Generator Locked. Support development to unlock.</p>
-                    </div>
-                    
-                    <div class="generator-content">
-                        <h3>Unlock Your Potential</h3>
-                        <div class="input-row">
-                            <input type="text" id="custName" placeholder="Full Name">
-                            <input type="email" id="custEmail" placeholder="E-mail Address">
-                        </div>
-                        <div class="input-row">
-                            <select id="appSelect">
-                                <option value="filelister">📁 FileLister Pro</option>
-                                <option value="knockapp">🔊 KnockApp</option>
-                                <option value="visualexif">🛡️ VisualExif</option>
-                                <option value="filelistertauri">🗂️ FileLister Tauri</option>
-                            </select>
-                            <button id="generateBtn" class="primary-btn">Generate Key</button>
-                        </div>
-                        <div id="resultBox" class="key-result hidden">
-                            <code id="finalKey">XXXX-XXXX-XXXX-XXXX-XXXX-XXXX</code>
-                            <button class="copy-small" onclick="copyKey()">📋</button>
-                        </div>
-                        <button id="mailBtn" class="secondary-btn hidden">Send Key to Email</button>
-                    </div>
+                <!-- Stripe Embedded Checkout mounts here -->
+                <div id="checkoutContainer" class="hidden"></div>
+
+                <div id="pendingBox" class="hidden">
+                    <p>⏳ Confirming your payment…</p>
+                </div>
+
+                <div id="resultBox" class="key-result hidden">
+                    <p>✅ Payment confirmed! Your license key (also emailed to you):</p>
+                    <code id="finalKey"></code>
+                    <button class="copy-small" onclick="copyKey()">📋</button>
                 </div>
             </div>
         </div>

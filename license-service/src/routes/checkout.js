@@ -20,6 +20,10 @@ router.post("/checkout/stripe", async (req, res) => {
     return res.status(400).json({ error: "Unknown app." });
   }
 
+  // Return to whichever allowed page actually called this — req.headers.origin
+  // is already validated by the cors() middleware, so it's trusted here.
+  const origin = req.headers.origin || "https://singleuseapps.com";
+
   // Fixed price for now. "Pay what you want" (custom_unit_amount) requires a
   // pre-created Stripe Price object referenced by ID — Checkout Sessions don't
   // accept it inline via price_data. Follow-up, not needed to prove the flow.
@@ -37,7 +41,7 @@ router.post("/checkout/stripe", async (req, res) => {
       },
     ],
     metadata: { appId, name: name.trim(), email: email.trim().toLowerCase() },
-    return_url: `https://singleuseapps.com/success?session_id={CHECKOUT_SESSION_ID}`,
+    return_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
   });
 
   res.json({ clientSecret: session.client_secret });
