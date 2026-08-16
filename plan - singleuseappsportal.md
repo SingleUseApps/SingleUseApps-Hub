@@ -93,7 +93,7 @@ key       = "XXXX-XXXX-XXXX-XXXX-XXXX-SIGSIG"   (seed in 5 groups of 4, then the
 - Real, webhook-verified confirmation before any key is issued.
 - **Stripe test keys obtained (2026-08-16).** Publishable key: `pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve` (safe to embed in frontend code). The matching secret key is intentionally **not** recorded in this file — kept in local memory only, never committed to git; moves to a VPS environment variable once `license-service` is scaffolded. A webhook signing secret (`whsec_...`) is still needed, generated once a real webhook endpoint URL exists to register with Stripe.
 - **PayPal on hold (2026-08-16):** deliberately deferring PayPal Developer sandbox credentials until the Stripe path is built and confirmed working end-to-end (Buy Widget → checkout → webhook → key generated → email delivered) — avoids building two payment integrations in parallel before either is proven.
-- **Pricing confirmed (2026-08-16):** 5€+ (pay-what-you-want, minimum 5€) for a lifetime license — same model as the current apps, applies to DupSweep too.
+- **Pricing confirmed (2026-08-16):** 5€ for a lifetime license — same model as the current apps, applies to DupSweep too. Implemented as a **flat 5€ price**, not adjustable "pay what you want" — Stripe Checkout Sessions don't accept `custom_unit_amount` inline (needs a pre-created `Price` object); user confirmed flat 5€ is fine, adjustable pricing is a possible future refinement, not planned work now.
 - **Still needed:** Stripe live keys (later, once ready for real payments), PayPal credentials (once Stripe is proven).
 
 ## 6. Shared "Buy Widget"
@@ -114,16 +114,22 @@ Payment is implemented **once**, embedded on every site so it feels native to ea
 
 ### Implementation plan
 
-**Phase 1 — backend core**
-1. `license-service/` — Node + Express app.
-2. Port the algorithm (`seed` + `SHA256(seed+email+salt)[:6]`) server-side, using the existing `SALT_MAP` values from `script.js` for the current 4 apps. **Open item:** DupSweep needs its own new salt value, not yet generated.
-3. SQLite DB (via e.g. `better-sqlite3`), one table: `email, name, appId, provider, payment_ref, key, created_at` — `payment_ref` unique, so a retried webhook or refreshed success page can't double-issue a key.
-4. Endpoints:
-   - `POST /api/checkout/stripe` — body `{ appId, name, email }` → creates a Stripe Checkout Session (Embedded mode), returns its `client_secret`.
-   - `POST /api/webhooks/stripe` — Stripe-signature-verified; on `checkout.session.completed`, runs `issueKey()`, stores the row, sends the email via Resend.
-   - `GET /api/license/:sessionId` — polled by the frontend after payment; returns `{status: "pending"}` until the webhook has processed, then `{status: "ready", key}`.
-5. CORS allow-list: `dupsweep.com`, `singleuseapps.com` (extend per new domain later).
-6. Env vars (never committed): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (generated after step 8 below), `RESEND_API_KEY`, `SALT_MAP` values.
+**Phase 1 — backend core — ✅ built and tested (2026-08-16)**
+1. `license-service/` — Node + Express app (ESM).
+2. Ported the algorithm (`seed` + `SHA256(seed+email+salt)[:6]`) server-side (`src/algorithm.js`), reading salts from env only (`src/apps.js`) — never committed, since this repo is public. DupSweep's salt (`DupSweep-Secret-Salt-2026-Sweep`) confirmed matching its Rust validator (see the algorithm-fix note below).
+3. SQLite DB (`better-sqlite3`, `src/db.js`): `email, name, appId, provider, payment_ref, key, created_at` — `payment_ref` unique; dedupe verified by calling `issueKey()` twice with the same ref and confirming the identical key comes back both times.
+4. Endpoints (`src/routes/`):
+   - `POST /api/checkout/stripe` — creates a real Stripe **test-mode** Checkout Session (verified with an actual API call, not just written), returns `clientSecret`.
+   - `POST /api/webhooks/stripe` — signature-verified (confirmed a bad signature returns 400 without crashing the server); on `checkout.session.completed`, runs `issueKey()`.
+   - `GET /api/license/:sessionId` — confirmed returns `{status:"pending"}` for an unknown session.
+5. CORS allow-list: `dupsweep.com`, `singleuseapps.com`.
+6. Env vars (`.env`, gitignored — confirmed via dry-run `git add` that only safe files would be staged): `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (still needed — see Phase 2), `RESEND_API_KEY`, per-app salts.
+
+**Bugs caught and fixed during testing (not just written blind):**
+- Stripe rejected `custom_unit_amount` inline on `price_data` — that's a `Prices` API concept needing a pre-created Price object, not accepted per-session. **Decision: flat 5€ price**, not adjustable "pay what you want" — user confirmed flat 5€ is fine; true customer-adjustable pricing remains a possible future refinement, not planned work now.
+- The webhook route's raw-body parser was initially mounted globally under `/api`, which would have broken JSON parsing on the checkout/license routes — caught and scoped to just `/api/webhooks/stripe` before committing.
+
+**Cross-implementation check:** a key generated by `license-service` was independently verified in Python to have the exact expected signature — confirming `license-service` (JS), `keygen_app.py` (Python), and DupSweep's Rust validator all agree on the identical algorithm.
 
 **Phase 2 — deployment**
 7. PM2 `ecosystem.config.js`, deployed to `/var/www/license-service` on the VPS (mirrors the MetaStrip pattern), listening on an internal port (e.g. `127.0.0.1:4002`, avoiding MetaStrip's `4001`).
@@ -212,11 +218,12 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Stripe test keys obtained
 - [ ] ~~PayPal sandbox + live app credentials~~ — on hold until Stripe is proven working
 - [ ] ~~Create the `singleuseapps` GitHub org~~ — on hold, `license-service` building in this repo instead
-- [ ] Generate a DupSweep salt for `SALT_MAP`
-- [ ] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS)
+- [x] Generate a DupSweep salt for `SALT_MAP` — `DupSweep-Secret-Salt-2026-Sweep`
+- [x] Fix DupSweep's license algorithm mismatch (2 PRs merged) so it accepts keys `license-service` issues
+- [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
 - [ ] Deploy `license-service` to the VPS (PM2 + new nginx server block/cert for `singleuseapps.com` + GitHub Actions)
 - [ ] Register the Stripe webhook endpoint → get `STRIPE_WEBHOOK_SECRET`
-- [x] Confirm pricing — 5€+ lifetime license, same as existing apps
+- [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
 - [ ] Build a minimal test page, run a full Stripe test-mode purchase end-to-end
 - [ ] Build the real shared Buy Widget (only after the test page proves the flow)
 - [ ] Build the DupSweep landing page (needs example site + assets from user)
