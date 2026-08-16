@@ -142,10 +142,11 @@ DNS: added the missing A record for `singleuseapps.com`/`www` → the VPS IP in 
 8. nginx server block + Let's Encrypt cert for `singleuseapps.com` — cert obtained via `certbot certonly --nginx` (obtain-only, not the auto-config-edit mode), then the full config hand-written to match the existing `singleuseapps-portal` config's style, with `location /api/` proxying to `127.0.0.1:4002`, plus an HTTP→HTTPS redirect block. Config backup taken first (`~/backups/nginx-backup-*.tar.gz` on the VPS — `deploy` can't write to `/root`).
    - Verified externally: valid cert (`CN=singleuseapps.com`), HTTP→HTTPS 301 redirect works, `www` variant works, `/api/health` returns 502 (proves the proxy is correctly wired to the not-yet-deployed service on port 4002, not a config error).
 
-**Still open:**
-9. Deploy the actual `license-service` code + `.env` + `npm install` to `/var/www/license-service`, PM2 setup.
-10. Register the real Stripe webhook (via API, using the existing test secret key) → `STRIPE_WEBHOOK_SECRET`.
-11. GitHub Actions: extend the existing deploy workflow (or add a second one scoped to `license-service/**` changes) to rsync just that subfolder to the VPS and restart the PM2 process.
+9. Deployed the code (`rsync`, excluding secrets/deps/data) + `.env` created directly on the VPS + `npm install --omit=dev` + PM2. `ecosystem.config.js` had to become `ecosystem.config.cjs` (PM2 can't `require()` an ESM file, and this package is `"type": "module"`) — fixed in the source repo, not just patched remotely.
+10. Registered the real Stripe webhook via the API (no dashboard needed) → `STRIPE_WEBHOOK_SECRET` added to the VPS `.env`, service restarted.
+    - **Bug caught and fixed:** nginx's `proxy_pass` had a trailing slash, which strips the `/api/` prefix before forwarding — Express still expected it, so every request 404'd. Fixed by dropping the trailing slash.
+    - **Verified live with real calls:** `/api/health` and `/api/checkout/stripe` both work through the production URL (a real Stripe test-mode session was created). Installed the Stripe CLI and ran `stripe trigger checkout.session.completed` against the live endpoint — confirmed via server logs that webhook **signature verification passed** on a real Stripe-signed event, and the handler correctly rejected it for missing custom metadata (expected, since the CLI's generic fixture doesn't carry our `appId`/`email`) without crashing.
+11. **Still open:** GitHub Actions automation for `license-service/**` deploys (currently deployed manually) — not blocking, revisit when convenient.
 
 **Phase 3 — first end-to-end test**
 12. Build a minimal test page (not the full styled widget yet) that calls `/api/checkout/stripe` and mounts Stripe's Embedded Checkout element, to validate the whole chain before investing in the polished, reusable Buy Widget.
@@ -231,8 +232,9 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Generate a DupSweep salt for `SALT_MAP` — `DupSweep-Secret-Salt-2026-Sweep`
 - [x] Fix DupSweep's license algorithm mismatch (2 PRs merged) so it accepts keys `license-service` issues
 - [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
-- [ ] Deploy `license-service` to the VPS (PM2 + new nginx server block/cert for `singleuseapps.com` + GitHub Actions)
-- [ ] Register the Stripe webhook endpoint → get `STRIPE_WEBHOOK_SECRET`
+- [x] Deploy `license-service` to the VPS (PM2 + nginx server block/cert for `singleuseapps.com`) — verified live with real Stripe test-mode calls
+- [x] Register the Stripe webhook endpoint → `STRIPE_WEBHOOK_SECRET` — signature verification confirmed working on a real Stripe-signed event
+- [ ] GitHub Actions automation for `license-service/**` deploys (currently manual)
 - [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
 - [ ] Build a minimal test page, run a full Stripe test-mode purchase end-to-end
 - [ ] Build the real shared Buy Widget (only after the test page proves the flow)
