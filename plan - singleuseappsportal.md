@@ -272,3 +272,54 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Migrate the Portal (`luisdanielsilva.com`) to be purely personal — simple single-viewport profile page (name/title/company/location/education/languages/contact/LinkedIn), sourced from the user's public LinkedIn profile. **Deployed directly to the VPS, intentionally not in Git** (user's explicit choice). ⚠️ This repo's root `index.html`/`script.js`/`style.css` are now stale/unmanaged for `luisdanielsilva.com` — do **not** re-deploy them there, it would silently overwrite the personal page with the old app catalog.
 - [ ] Add PayPal once Stripe is proven
 - [ ] Go live: swap to live keys/webhooks
+- [ ] Add real DupSweep screenshots to its landing page once available (built screenshot-free for now — reminder not to forget this)
+
+## 13. Infrastructure map (living diagram — keep updated as the plan progresses)
+
+```mermaid
+flowchart LR
+    subgraph GH["📦 GitHub Repos"]
+        Portal["SingleUseApps-Portal<br/>├─ root (stale, unmanaged)<br/>├─ hub/<br/>└─ license-service/"]
+        DupSweepRepo["DupSweep<br/>(Tauri app source)"]
+        OtherApps["FileLister · KnockApp<br/>VisualExif · FileLister-Tauri<br/>(app sources)"]
+        KeyGenRepo["SingleUseApps-KeyGen<br/>(manual/test tool)"]
+        VibeRepo["VibeCoding-Ideas"]
+        DrawioRepo["Drawio2Mermaid"]
+    end
+
+    subgraph VPS["🖥️ VPS — websitehost (nginx + PM2)"]
+        PortalDir["/var/www/singleuseapps-portal/<br/>+ /vibecoding/ + /drawio2mermaid/"]
+        HubDir["/var/www/singleuseapps-com/<br/>hub/ + buy-widget.js"]
+        LicenseDir["/var/www/license-service/<br/>PM2 · :4002"]
+        MetaDir["/var/www/metastrip/<br/>PM2 · offline"]
+        DupSweepDir["/var/www/dupsweep-com/"]
+    end
+
+    subgraph Domains["🌐 Domains"]
+        LDS["luisdanielsilva.com / .pt"]
+        SUA["singleuseapps.com / .pt"]
+        DS["dupsweep.com"]
+    end
+
+    Portal -."deploy.yml — DISABLED<br/>(workflow_dispatch only,<br/>would clobber the personal page)".-> PortalDir
+    Portal -."manual scp (personal page)".-> PortalDir
+    Portal -."manual rsync".-> HubDir
+    Portal -."manual rsync".-> LicenseDir
+    Portal -."manual rsync (landing page)".-> DupSweepDir
+    VibeRepo -."manual git clone".-> PortalDir
+    DrawioRepo -."manual git clone".-> PortalDir
+
+    DupSweepRepo -."release.yml — auto on git tag<br/>→ GitHub Release (installers),<br/>not deployed to VPS" .-> DupSweepRepo
+    OtherApps -."release workflows — auto<br/>→ GitHub Releases only" .-> OtherApps
+    KeyGenRepo -."no workflow, run locally" .-> KeyGenRepo
+
+    PortalDir --> LDS
+    HubDir --> SUA
+    LicenseDir -."/api/ proxy" .-> SUA
+    MetaDir -."/metastrip/ proxy" .-> LDS
+    DupSweepDir --> DS
+```
+
+**Reading it:** solid boxes are where code/content actually lives; dotted arrows show *how* it gets there and whether that's automatic or manual. Nothing currently deploys to the VPS automatically — every arrow in is a manual `rsync`/`scp`/`git clone`, or a workflow deliberately disabled. The only automatic GitHub Actions still running are app repos' release builders, which only publish downloadable installers and never touch the VPS.
+
+*Last updated: 2026-08-17, while starting the DupSweep landing page (`dupsweep.com` getting its nginx/cert/docroot set up, no content deployed yet at time of writing).*
