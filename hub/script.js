@@ -37,10 +37,10 @@ const APPS = {
             "Undo, Trash Safety & Operation History"
         ],
         // Permanent links — these always resolve to the newest release's installers.
-        repo: "luisdanielsilva/DupSweep",
+        repo: "SingleUseApps/dupsweep",
         downloads: [
-            { label: "⌘ macOS (Universal)", url: "https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-macos.dmg" },
-            { label: "⊞ Windows (.exe)", url: "https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-windows-setup.exe" }
+            { label: "⌘ macOS (Universal)", url: "https://github.com/SingleUseApps/dupsweep/releases/latest/download/DupSweep-macos.dmg" },
+            { label: "⊞ Windows (.exe)", url: "https://github.com/SingleUseApps/dupsweep/releases/latest/download/DupSweep-windows-setup.exe" }
         ]
     }
 };
