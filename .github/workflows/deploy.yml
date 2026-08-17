@@ -1,80 +1,20 @@
 name: Deploy Website to VPS
 
-# Disabled auto-trigger (2026-08-17): this repo's root index.html/script.js/
-# style.css are now stale/unmanaged — luisdanielsilva.com's real content is
-# the personal page deployed directly to the VPS (not in Git, see plan doc).
-# An auto-run of this workflow would silently overwrite it. Deploys for this
-# repo are manual for now anyway (see plan doc: Tailscale-from-CI reliability
-# issue) — kept as workflow_dispatch so it can still be run deliberately if
-# ever needed, e.g. once retired or repointed at a path that's actually
-# meant to be Git-managed again.
+# Permanently disabled (2026-08-17).
+# This workflow used to rsync the repo root to /var/www/singleuseapps-portal/,
+# which would overwrite the live luisdanielsilva.com personal page (not in Git)
+# and --delete unmanaged paths like /vibecoding/ and /drawio2mermaid/.
+# All deploy/SSH/Tailscale steps have been removed. workflow_dispatch is kept
+# only so a leftover "Run workflow" click still starts this file — the job
+# is skipped, and even if that guard is removed later, the remaining step
+# is a no-op.
 on:
   workflow_dispatch:
 
 jobs:
   deploy:
+    if: false
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v5
-
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v2
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-
-      - name: Set up SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-
-      - name: Wait for Tailscale connectivity to VPS
-        run: |
-          ok=false
-          for i in $(seq 1 15); do
-            if tailscale ping --timeout=5s --c=1 ${{ secrets.VPS_HOST }}; then ok=true; break; fi
-            echo "tailscale ping attempt $i failed, retrying in 8s (route may still be settling)..."
-            sleep 8
-          done
-          $ok || { echo "::error::Tailscale never reached the VPS — failing the job instead of continuing blind."; exit 1; }
-
-      - name: Add VPS to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ok=false
-          for i in $(seq 1 10); do
-            if ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null; then ok=true; break; fi
-            echo "ssh-keyscan attempt $i failed, retrying in 8s..."
-            sleep 8
-          done
-          $ok || { echo "::error::ssh-keyscan never succeeded."; exit 1; }
-
-      - name: Prepare Directory
-        run: |
-          ok=false
-          for i in $(seq 1 10); do
-            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo mkdir -p /var/www/singleuseapps-portal/ && sudo chown -R deploy:www-data /var/www/singleuseapps-portal/'; then ok=true; break; fi
-            echo "ssh attempt $i failed, retrying in 8s (intermittent Tailscale packet loss on fresh ephemeral nodes)..."
-            sleep 8
-          done
-          $ok || { echo "::error::Could not prepare the target directory after 10 attempts."; exit 1; }
-
-      - name: Deploy via Rsync
-        run: |
-          ok=false
-          for i in $(seq 1 10); do
-            if rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15" --exclude '.git' --exclude '.github' ./ deploy@${{ secrets.VPS_HOST }}:/var/www/singleuseapps-portal/; then ok=true; break; fi
-            echo "rsync attempt $i failed, retrying in 8s..."
-            sleep 8
-          done
-          $ok || { echo "::error::rsync never completed after 10 attempts — site was NOT updated."; exit 1; }
-
-      - name: Restart Nginx
-        run: |
-          ok=false
-          for i in $(seq 1 10); do
-            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx'; then ok=true; break; fi
-            echo "ssh attempt $i failed, retrying in 8s..."
-            sleep 8
-          done
-          $ok || { echo "::error::Could not restart nginx after 10 attempts."; exit 1; }
+      - name: Disabled
+        run: echo "This workflow is permanently disabled. It does not deploy."
