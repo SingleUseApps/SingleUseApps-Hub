@@ -1,0 +1,34 @@
+name: Test VPS Connectivity (throwaway diagnostic)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Tailscale ping
+        run: |
+          ok=false
+          for i in $(seq 1 15); do
+            if tailscale ping --timeout=5s --c=1 ${{ secrets.VPS_HOST }}; then ok=true; break; fi
+            echo "attempt $i failed, retrying in 8s..."
+            sleep 8
+          done
+          $ok || { echo "::error::Tailscale never reached the VPS."; exit 1; }
+
+      - name: SSH connectivity (read-only, no writes)
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 deploy@${{ secrets.VPS_HOST }} 'echo "SSH OK: $(hostname), $(date)"'
