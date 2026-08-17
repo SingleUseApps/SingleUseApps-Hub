@@ -156,12 +156,14 @@ Reused the existing, already-live Portal support-form instead of a separate thro
 13. `index.html`/`script.js`: removed all client-side key generation (`SALT_MAP`, `calculateSignature`) and the fake `simulatePayment()`. Form now collects name/email/app first; "Pay with Stripe" calls `/api/checkout/stripe` and mounts Stripe's real Embedded Checkout inline; on return (`?session_id=...`), polls `/api/license/:sessionId` until ready. PayPal button removed from the UI for now.
 14. **Ran a full, real, browser-driven Stripe test-mode purchase** — confirmed correct 5€ charge, webhook fired, and a real key was issued and displayed. This is the first genuine end-to-end proof of the whole chain (Stripe CLI's earlier `trigger` only tested webhook plumbing in isolation, not a real user checkout).
 
-**Deployment hiccup found (unrelated to this work) — since fixed (2026-08-16):** GitHub Actions deploy had been intermittently failing since 2026-08-15 evening. Deployed manually via `rsync` over the existing SSH access to unblock testing in the meantime. Turned out to be three separate, layered problems:
+**Deployment hiccup found (unrelated to this work) (2026-08-16):** GitHub Actions deploy had been intermittently failing since 2026-08-15 evening. Deployed manually via `rsync` over the existing SSH access to unblock testing in the meantime. Chased through several layered problems:
 1. Expired `TAILSCALE_AUTHKEY` — fixed by regenerating a new key in the Tailscale admin console (reusable + ephemeral + longest expiry) and updating the GitHub secret.
 2. Pushing the workflow-file fix itself needed `gh auth refresh -s workflow` first (missing OAuth scope for editing `.github/workflows/*`).
-3. Even with a valid key, the ephemeral runner showed genuine intermittent packet loss reaching the VPS over Tailscale right after joining — individual `tailscale ping`/`ssh-keyscan` calls would succeed, then the next SSH attempt would still time out. Ruled out Tailscale ACL (checked — wide open) and fail2ban (checked — zero bans) before landing on this. Fixed with a `tailscale ping` retry loop before any SSH, `ConnectTimeout=15` everywhere (fails in 15s instead of ~2min), and wrapping every SSH/rsync step in a 5-attempt retry.
+3. Even with a valid key, the ephemeral runner showed intermittent packet loss reaching the VPS over Tailscale right after joining. Ruled out Tailscale ACL (checked — wide open) and fail2ban (checked — zero bans). Added retry loops + `ConnectTimeout=15` everywhere.
+4. **The retry loops had a bug that silently reported success on total failure** (`command && break` — when every attempt fails, the last thing executed is the harmless `sleep`, exit 0). A run genuinely went green while all 15 SSH/rsync attempts across 3 steps failed and the live site was never updated. Fixed to explicitly track success and fail loudly.
+5. Even with all of the above fixed, the underlying connectivity is **not just occasional flakiness** — a later run failed all 15 `tailscale ping` attempts outright. This looks like a deeper reliability problem with Tailscale-from-GitHub-hosted-ephemeral-runners (UDP/NAT traversal to the DERP relay can be unreliable from GH's runner IP ranges), not something retry counts alone fix.
 
-Verified fully working end-to-end: a real push went green on every step, and the live site was confirmed to actually reflect the deploy.
+**Decision: deploy manually for now, not worth more time chasing this.** My SSH access works reliably every time; automated CI is deprioritized until revisited later, possibly via direct public SSH instead of routing through Tailscale in CI (a real security-posture change, not a quick fix, so not undertaken now).
 
 **Phase 4 — polish, in progress (2026-08-17)**
 
@@ -256,7 +258,7 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
 - [x] Deploy `license-service` to the VPS (PM2 + nginx server block/cert for `singleuseapps.com`) — verified live with real Stripe test-mode calls
 - [x] Register the Stripe webhook endpoint → `STRIPE_WEBHOOK_SECRET` — signature verification confirmed working on a real Stripe-signed event
-- [x] Fix GitHub Actions deploy pipeline — new Tailscale key + retry logic for intermittent CI packet loss; verified with a full green run reflected on the live site
+- [~] Fix GitHub Actions deploy pipeline — expired key fixed, retry-loop false-success bug fixed, but the underlying Tailscale-from-ephemeral-runner connectivity is genuinely unreliable (not just occasional flakiness — one run failed all 15 connectivity attempts outright). **Decided: deploy manually for now** rather than keep patching; revisit later, possibly via direct public SSH instead of Tailscale in CI
 - [ ] Automate `license-service/**` deploys via GitHub Actions (currently manual)
 - [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
 - [x] Ran a full, real, browser-driven Stripe test-mode purchase end-to-end — confirmed correct 5€ charge, key issued and displayed
