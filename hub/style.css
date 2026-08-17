@@ -367,6 +367,13 @@ h1 {
     margin-bottom: 16px;
 }
 
+/* App picker above the Buy Widget — match its 420px width so both align */
+.support-section .input-row {
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .input-group {
     display: flex;
     flex-direction: row;

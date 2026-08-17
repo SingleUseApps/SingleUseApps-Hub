@@ -23,7 +23,7 @@
     stylesInjected = true;
     const style = document.createElement("style");
     style.textContent = `
-      .suaw-root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 420px; }
+      .suaw-root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 420px; margin: 0 auto; }
       .suaw-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
       .suaw-root input {
         width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px;
