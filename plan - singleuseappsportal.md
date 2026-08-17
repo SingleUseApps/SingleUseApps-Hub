@@ -241,11 +241,15 @@ Considered a cross-repo GitHub Project board as a lighter alternative — reject
 
 **Put on hold (2026-08-16):** decided to build `license-service` directly inside this repo as a subfolder instead, so backend work isn't blocked on the org migration. Revisit once there's more to organize.
 
-## 11. DupSweep landing page
+## 11. DupSweep landing page — built and live (2026-08-17)
 
-Build now, at `dupsweep.com`, in parallel with the still-pending backend — using a placeholder/fake "Buy" button (same pattern as the current Portal's `simulatePayment()`) rather than waiting on `license-service` to exist, so content/design work isn't blocked. The placeholder gets swapped for the real embedded Buy Widget once the backend is built.
+By the time this got built, `license-service` and the Buy Widget already existed and `dupsweep.com` was already in `ALLOWED_ORIGINS` — so it shipped with a **real, working Buy button** from day one, no placeholder needed.
 
-**Still needed from user:** an example site to style it after, DupSweep screenshots (or these can be captured by running the app), feature copy.
+`dupsweep-site/index.html` — styled after [wishlists-app.com](https://www.wishlists-app.com) (clean, minimalist, teal/coral), adapted: hero, 4-feature grid (real capabilities — no fabricated stats/testimonials, unlike the reference site), platform download badges, real Buy Widget embed. **Built screenshot-free** — user doesn't have DupSweep screenshots yet. **Reminder: add real screenshots once available** (not yet done).
+
+**Real DNS bugs found and fixed getting `dupsweep.com` live:** the domain was Proxied through Cloudflare (not DNS-only like every other domain — broke the certbot ACME challenge outright), the root A record pointed at a stale Amen IP, and `www` had no A record at all (a leftover CNAME to Amen's parking service, also proxied). Fixed all three, then cert + nginx config succeeded.
+
+Verified live: real 200 response, widget renders, and a real Stripe checkout session created successfully from `dupsweep.com`'s actual origin.
 
 ## 12. Open items / next steps
 
@@ -266,7 +270,7 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Ran a full, real, browser-driven Stripe test-mode purchase end-to-end — confirmed correct 5€ charge, key issued and displayed
 - [x] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
 - [x] Build the real shared Buy Widget (`buy-widget.js`) and switch the Portal to use it — confirmed with a real browser purchase on `www.luisdanielsilva.com`
-- [ ] Build the DupSweep landing page (needs example site + assets from user)
+- [x] Build the DupSweep landing page — live at `dupsweep.com`, real Buy Widget working, screenshot-free for now (see reminder below to revisit)
 - [x] Build the Apps Hub site at `singleuseapps.com` (`hub/` — adapted from the Portal; FileLister Pro/Tauri removed, DupSweep added, contact form → `singleuseapp@gmail.com`) — deployed manually, verified live
 - [x] Fix `singleuseapps.pt`'s DNS + missing HTTPS config — now correctly redirects (HTTP and HTTPS) to `singleuseapps.com` with a valid cert
 - [x] Migrate the Portal (`luisdanielsilva.com`) to be purely personal — simple single-viewport profile page (name/title/company/location/education/languages/contact/LinkedIn), sourced from the user's public LinkedIn profile. **Deployed directly to the VPS, intentionally not in Git** (user's explicit choice). ⚠️ This repo's root `index.html`/`script.js`/`style.css` are now stale/unmanaged for `luisdanielsilva.com` — do **not** re-deploy them there, it would silently overwrite the personal page with the old app catalog.
@@ -322,4 +326,4 @@ flowchart LR
 
 **Reading it:** solid boxes are where code/content actually lives; dotted arrows show *how* it gets there and whether that's automatic or manual. Nothing currently deploys to the VPS automatically — every arrow in is a manual `rsync`/`scp`/`git clone`, or a workflow deliberately disabled. The only automatic GitHub Actions still running are app repos' release builders, which only publish downloadable installers and never touch the VPS.
 
-*Last updated: 2026-08-17, while starting the DupSweep landing page (`dupsweep.com` getting its nginx/cert/docroot set up, no content deployed yet at time of writing).*
+*Last updated: 2026-08-17 — DupSweep landing page (`dupsweep-site/`) built and live at `dupsweep.com`, real Buy Widget working. `DupSweepDir` now has real content, not just an empty docroot.*
