@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Use Apps | Premium macOS Utilities</title>
+    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="blob-container">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="glass-nav">
+        <div class="nav-content">
+            <div class="brand">Single Use <span>Apps</span></div>
+            <ul class="nav-links">
+                <li><a href="#hero">Home</a></li>
+                <li><a href="#apps">Applications</a></li>
+                <li><a href="#support">Get License</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero-section">
+        <div class="container">
+            <h1 class="reveal">Elevate your <br><span class="gradient-text">macOS Experience.</span></h1>
+            <p class="hero-subtitle reveal">Premium utilities designed for performance, security, and pure elegance.</p>
+            <div class="hero-btns reveal">
+                <a href="#apps" class="primary-btn">Explore Suite</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Apps Gallery -->
+    <section id="apps" class="apps-section">
+        <div class="container">
+            <h2 class="section-title">The Collection</h2>
+            <div class="apps-grid">
+                <!-- KnockApp -->
+                <div class="app-card" onclick="selectApp('knockapp')">
+                    <div class="app-icon-bg">🔊</div>
+                    <h3>KnockApp</h3>
+                    <p>Physics-based sound triggers via MacBook impact detection.</p>
+                    <div class="card-footer">
+                        <a href="https://github.com/luisdanielsilva/KnockApp/releases/latest/download/KnockApp.zip" class="quick-download" onclick="event.stopPropagation()">Download</a>
+                    </div>
+                </div>
+
+                <!-- VisualExif -->
+                <div class="app-card" onclick="selectApp('visualexif')">
+                    <div class="app-icon">🛡️</div>
+                    <h3>VisualExif</h3>
+                    <p>Professional metadata cleaner with folder batch processing.</p>
+                    <div class="card-footer">
+                        <a href="https://github.com/luisdanielsilva/VisualExif/releases/latest/download/VisualExif.zip" class="quick-download" onclick="event.stopPropagation()">Download</a>
+                    </div>
+                </div>
+
+                <!-- DupSweep -->
+                <div class="app-card" onclick="selectApp('dupsweep')">
+                    <span class="badge-new">NEW</span>
+                    <div class="app-icon">🧹</div>
+                    <h3>DupSweep</h3>
+                    <p>Find and safely remove duplicate files, folders, and photos.</p>
+                    <div class="card-footer">
+                        <a href="https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-macos.dmg" class="quick-download" onclick="event.stopPropagation()">Download</a>
+                        <span class="badge">Popular</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- App Details View (Dynamic) -->
+    <section id="details" class="details-section hidden">
+        <div class="container">
+            <div class="details-content glass-card">
+                <button class="close-btn" onclick="hideDetails()">×</button>
+                <div class="details-header">
+                    <div id="detailIcon" class="large-icon">🔊</div>
+                    <div>
+                        <h2 id="detailTitle">KnockApp</h2>
+                        <p id="detailTagline" class="tagline">Sound triggers powered by physics.</p>
+                    </div>
+                </div>
+                <div class="details-body">
+                    <div class="features-list">
+                        <h4>Key Features</h4>
+                        <ul id="detailFeatures">
+                            <li>Accelerometer Impact Detection</li>
+                            <li>Custom Sound Library Support</li>
+                            <li>Sensitivity Calibration</li>
+                            <li>Low Latency Audio Engine</li>
+                        </ul>
+                    </div>
+                    <div class="detail-actions">
+                        <p id="detailVersion" class="version-tag"></p>
+                        <a id="detailDownload" href="#" class="primary-btn" style="text-decoration: none;">Download Trial</a>
+                        <div id="detailDownloads" class="download-row"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Support & License Section -->
+    <section id="support" class="support-section">
+        <div class="container">
+            <div class="support-card glass-card">
+                <div class="support-header">
+                    <h2>Support Development</h2>
+                    <p>Pay <span class="highlight-price">5€</span> to unlock a Lifetime Pro License for any app.</p>
+                </div>
+
+                <!-- App picker; the Buy Widget below re-renders for whichever app is selected -->
+                <div class="input-row">
+                    <select id="appSelect">
+                        <option value="knockapp">🔊 KnockApp</option>
+                        <option value="visualexif">🛡️ VisualExif</option>
+                        <option value="dupsweep">🧹 DupSweep</option>
+                    </select>
+                </div>
+
+                <!-- Shared Buy Widget — same embed used on every app's own site -->
+                <div id="buyWidget" class="buy-widget" data-app="knockapp"></div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Single Use Apps. Proudly made in Portugal. 🇵🇹</p>
+            <button class="outline-btn" style="margin-top: 20px; font-size: 12px; padding: 10px 20px;" onclick="openContact()">💌 Contact Form</button>
+        </div>
+    </footer>
+
+    <!-- Contact Modal -->
+    <section id="contactModal" class="details-section hidden">
+        <div class="container">
+            <div class="details-content glass-card" style="background: rgba(20, 20, 25, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;">
+                <button class="close-btn" onclick="closeContact()">×</button>
+                <div class="details-header">
+                    <div>
+                        <h2>Contact Us</h2>
+                        <p class="tagline">Have a question or suggestion?<br>Drop us a message!</p>
+                    </div>
+                </div>
+                <div class="details-body generator-form" style="margin-top: 20px;">
+                    <div class="input-group">
+                        <label>Name</label>
+                        <input type="text" id="contactName" placeholder="Your name">
+                    </div>
+                    <div class="input-group">
+                        <label>E-mail</label>
+                        <input type="email" id="contactEmail" placeholder="Your e-mail">
+                    </div>
+                    <div class="input-group">
+                        <label>Message</label>
+                        <textarea id="contactMessage" rows="5" placeholder="Describe your problem or idea here..."></textarea>
+                    </div>
+                    <button class="primary-btn" style="margin-top: 10px; width: 100%;" onclick="sendContact()">Send Message</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://singleuseapps.com/buy-widget.js"></script>
+    <script src="script.js?v=10"></script>
+</body>
+</html>
