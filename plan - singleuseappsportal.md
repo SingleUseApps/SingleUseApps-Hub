@@ -222,24 +222,31 @@ Bought on Amen.pt (2026-08-15): `dupsweep.com`, `singleuseapps.com`, `singleusea
 
 **Bug found (2026-08-17) — fixed.** `singleuseapps.pt` wasn't reaching the VPS — it served Amen's default parking page. Fixed in two parts: (1) corrected the Cloudflare A records (`@` and `www`) to the VPS IP, DNS-only — hit a snag where adding the `www` record failed due to a leftover CNAME needing to be edited/deleted first; (2) HTTPS had no dedicated nginx config at all and was silently serving `luisdanielsilva.com`'s certificate (wrong domain, would show a browser warning) — added a new `certbot` cert + nginx block redirecting both HTTP and HTTPS to `https://singleuseapps.com`, matching the existing `luisdanielsilva.pt` → `.com` pattern. Verified live: correct redirect chain, valid cert (`CN=singleuseapps.pt`).
 
-## 10. GitHub organization — on hold, target for later
+## 10. GitHub organization — built (2026-08-17)
 
-Create a `singleuseapps` GitHub Organization to separate the product line from the personal `luisdanielsilva` account. Confirmed **free** (Org Free tier = unlimited private repos, same as personal; cost only applies to Actions minutes beyond 2,000/month or advanced permissions/SSO — none relevant solo). Benefits: org-level shared secrets (VPS SSH key, Stripe/PayPal/Resend keys set once, used by every repo's Actions workflow instead of duplicated per-repo), a clean personal/business boundary, room for collaborators later. Repo transfers preserve history/issues/stars; old URLs redirect.
+Structure ended up different from the original 5-separate-repos sketch, since `hub/`, `license-service/`, and `dupsweep-site/` evolved into subfolders of one repo rather than splitting out. Went through a real design review before executing:
 
-Suggested layout (repo names drop the `SingleUseApps-` prefix, since the org now provides that context):
+- Original draft had `dupsweep-site` centralized in the Hub repo — corrected to live **with the DupSweep app** instead ("hub is one thing, each app is another, personal website another").
+- Confirmed reversible before proceeding: repo transfers/renames use GitHub's built-in redirects, no data loss either way; only the `dupsweep-site/` file relocation needs manual work to undo.
+- `FileLister`/`KnockApp`/`VisualExif`/`FileLister-Tauri` deliberately **left under the personal account** — not touched by this project's work.
 
+**Final structure:**
 ```
-singleuseapps/  (org)
-├── hub                  ← current SingleUseApps-Portal, transferred
-├── dupsweep-app         ← existing DupSweep Tauri app source, transferred
-├── dupsweep-site        ← new: DupSweep marketing/landing site
-├── license-service      ← new: shared backend (buy-widget folded in as a subfolder)
-└── keygen-desktop       ← current SingleUseApps-KeyGen, transferred, stays as the manual/test tool
+SingleUseApps/  (org)
+├── SingleUseApps-Hub    ← transferred + renamed from SingleUseApps-Portal
+│   ├── hub/                Apps Hub site
+│   └── license-service/    shared backend
+├── dupsweep              ← transferred
+│   ├── (app source)
+│   └── dupsweep-site/      moved here from the Hub repo
+└── SingleUseApps-KeyGen  ← transferred, unchanged
 ```
+Personal website stays outside any repo (unchanged decision). `VibeCoding-Ideas`/`Drawio2Mermaid` stay under the personal account.
 
-Considered a cross-repo GitHub Project board as a lighter alternative — rejected as a *substitute* for the org, since a Project only gives shared task visibility, it doesn't move repo ownership or share secrets. Could still be added later, on top of the org, purely for cross-repo task tracking.
-
-**Put on hold (2026-08-16):** decided to build `license-service` directly inside this repo as a subfolder instead, so backend work isn't blocked on the org migration. Revisit once there's more to organize.
+**Notes from execution:**
+- Repo-level secrets (`FTP_*`, `VPS_*`, `TAILSCALE_AUTHKEY`) survived the transfer automatically.
+- **Found real uncommitted work before touching the DupSweep repo**: the About-dialog/email-styling feature from earlier had been tested working but never actually committed — merged as PR #4 first.
+- Updated DupSweep download links (Hub + DupSweep's own landing page) to the new `SingleUseApps/dupsweep` path; old `luisdanielsilva/DupSweep` links still redirect automatically either way. `FileLister`/`KnockApp`/`VisualExif` links correctly left unchanged since those repos didn't move.
 
 ## 11. DupSweep landing page — built and live (2026-08-17)
 
@@ -258,7 +265,7 @@ Verified live: real 200 response, widget renders, and a real Stripe checkout ses
 - [x] Cloudflare Email Routing (receiving only) working for `support@singleuseapps.com`
 - [x] Stripe test keys obtained
 - [ ] ~~PayPal sandbox + live app credentials~~ — on hold until Stripe is proven working
-- [ ] ~~Create the `singleuseapps` GitHub org~~ — on hold, `license-service` building in this repo instead
+- [x] Create the `SingleUseApps` GitHub org — built, 3 repos transferred/renamed, `dupsweep-site/` moved into the `dupsweep` repo (see §10)
 - [x] Generate a DupSweep salt for `SALT_MAP` — `DupSweep-Secret-Salt-2026-Sweep`
 - [x] Fix DupSweep's license algorithm mismatch (2 PRs merged) so it accepts keys `license-service` issues
 - [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
@@ -282,11 +289,14 @@ Verified live: real 200 response, widget renders, and a real Stripe checkout ses
 
 ```mermaid
 flowchart LR
-    subgraph GH["📦 GitHub Repos"]
-        Portal["SingleUseApps-Portal<br/>├─ root (stale, unmanaged)<br/>├─ hub/<br/>└─ license-service/"]
-        DupSweepRepo["DupSweep<br/>(Tauri app source)"]
-        OtherApps["FileLister · KnockApp<br/>VisualExif · FileLister-Tauri<br/>(app sources)"]
+    subgraph Org["📦 GitHub org: SingleUseApps"]
+        Hub["SingleUseApps-Hub<br/>(renamed from SingleUseApps-Portal)<br/>├─ root (stale, unmanaged)<br/>├─ hub/<br/>└─ license-service/"]
+        DupSweepRepo["dupsweep<br/>├─ app source (Tauri)<br/>└─ dupsweep-site/"]
         KeyGenRepo["SingleUseApps-KeyGen<br/>(manual/test tool)"]
+    end
+
+    subgraph Personal["👤 GitHub: luisdanielsilva (personal)"]
+        OtherApps["FileLister · KnockApp<br/>VisualExif · FileLister-Tauri<br/>(app sources — not moved)"]
         VibeRepo["VibeCoding-Ideas"]
         DrawioRepo["Drawio2Mermaid"]
     end
@@ -305,11 +315,11 @@ flowchart LR
         DS["dupsweep.com"]
     end
 
-    Portal -."deploy.yml — DISABLED<br/>(workflow_dispatch only,<br/>would clobber the personal page)".-> PortalDir
-    Portal -."manual scp (personal page)".-> PortalDir
-    Portal -."manual rsync".-> HubDir
-    Portal -."manual rsync".-> LicenseDir
-    Portal -."manual rsync (landing page)".-> DupSweepDir
+    Hub -."deploy.yml — DISABLED<br/>(workflow_dispatch only,<br/>would clobber the personal page)".-> PortalDir
+    Hub -."manual scp (personal page)".-> PortalDir
+    Hub -."manual rsync".-> HubDir
+    Hub -."manual rsync".-> LicenseDir
+    DupSweepRepo -."manual rsync (landing page)".-> DupSweepDir
     VibeRepo -."manual git clone".-> PortalDir
     DrawioRepo -."manual git clone".-> PortalDir
 
@@ -326,4 +336,4 @@ flowchart LR
 
 **Reading it:** solid boxes are where code/content actually lives; dotted arrows show *how* it gets there and whether that's automatic or manual. Nothing currently deploys to the VPS automatically — every arrow in is a manual `rsync`/`scp`/`git clone`, or a workflow deliberately disabled. The only automatic GitHub Actions still running are app repos' release builders, which only publish downloadable installers and never touch the VPS.
 
-*Last updated: 2026-08-17 — DupSweep landing page (`dupsweep-site/`) built and live at `dupsweep.com`, real Buy Widget working. `DupSweepDir` now has real content, not just an empty docroot.*
+*Last updated: 2026-08-17 — GitHub org (`SingleUseApps`) built: `SingleUseApps-Portal` transferred + renamed to `SingleUseApps-Hub`, `DupSweep`/`SingleUseApps-KeyGen` transferred, `dupsweep-site/` moved out of the Hub repo into `dupsweep`. VPS paths/domains unaffected by this — only the GitHub side changed.*
