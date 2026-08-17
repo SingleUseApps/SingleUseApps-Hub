@@ -1,9 +1,15 @@
 name: Deploy Website to VPS
 
+# Disabled auto-trigger (2026-08-17): this repo's root index.html/script.js/
+# style.css are now stale/unmanaged — luisdanielsilva.com's real content is
+# the personal page deployed directly to the VPS (not in Git, see plan doc).
+# An auto-run of this workflow would silently overwrite it. Deploys for this
+# repo are manual for now anyway (see plan doc: Tailscale-from-CI reliability
+# issue) — kept as workflow_dispatch so it can still be run deliberately if
+# ever needed, e.g. once retired or repointed at a path that's actually
+# meant to be Git-managed again.
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
