@@ -260,8 +260,8 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
 - [x] Deploy `license-service` to the VPS (PM2 + nginx server block/cert for `singleuseapps.com`) — verified live with real Stripe test-mode calls
 - [x] Register the Stripe webhook endpoint → `STRIPE_WEBHOOK_SECRET` — signature verification confirmed working on a real Stripe-signed event
-- [~] Fix GitHub Actions deploy pipeline — expired key fixed, retry-loop false-success bug fixed, but the underlying Tailscale-from-ephemeral-runner connectivity is genuinely unreliable (not just occasional flakiness — one run failed all 15 connectivity attempts outright). **Decided: deploy manually for now** rather than keep patching; revisit later, possibly via direct public SSH instead of Tailscale in CI
-- [ ] Automate `license-service/**` deploys via GitHub Actions (currently manual)
+- [~] Fix GitHub Actions deploy pipeline — expired key fixed, retry-loop false-success bug fixed, but the underlying Tailscale-from-ephemeral-runner connectivity is genuinely unreliable. **Decided: deploy manually for now.** Auto-trigger since fully **disabled** (`workflow_dispatch` only) — the repo root is now stale relative to the live personal page, so an auto-run risked silently overwriting it. Revisit later, possibly via direct public SSH instead of Tailscale in CI, once there's a real need to re-enable automation.
+- [ ] Automate `license-service/**` (and `hub/**`) deploys — not started; would need its own workflow scoped to those subfolders only, kept separate from the now-disabled root workflow
 - [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
 - [x] Ran a full, real, browser-driven Stripe test-mode purchase end-to-end — confirmed correct 5€ charge, key issued and displayed
 - [x] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
