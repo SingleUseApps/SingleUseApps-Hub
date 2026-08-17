@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DupSweep — Find and Clean Duplicate Files, Folders & Photos</title>
+<meta name="description" content="DupSweep finds duplicate files, folders, and photos on macOS and Windows — every match byte-verified, every deletion safe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #1F7A70;
+    --teal-dark: #145850;
+    --coral: #E8735C;
+    --bg: #FBFAF8;
+    --card: #ffffff;
+    --text-main: #1A1E1D;
+    --text-dim: #62706D;
+    --border: #E7E3DD;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+    line-height: 1.5;
+  }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  a { color: inherit; }
+
+  /* Nav */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 19px; }
+  .brand .icon { font-size: 22px; }
+  .nav-links { display: flex; gap: 28px; list-style: none; font-size: 14px; font-weight: 600; color: var(--text-dim); }
+  .nav-links a:hover { color: var(--text-main); }
+  .nav-cta {
+    background: var(--teal); color: #fff; padding: 9px 18px; border-radius: 8px;
+    font-size: 14px; font-weight: 700; text-decoration: none;
+  }
+
+  /* Hero */
+  .hero { text-align: center; padding: 64px 0 56px; }
+  .hero h1 {
+    font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .hero .accent { color: var(--teal); }
+  .hero p {
+    max-width: 480px; margin: 18px auto 0; font-size: 17px; color: var(--text-dim);
+  }
+  .hero-btns { display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--teal); color: #fff; padding: 13px 26px; border-radius: 10px;
+    font-weight: 700; font-size: 15px; text-decoration: none; border: none; cursor: pointer;
+  }
+  .btn-secondary {
+    background: transparent; color: var(--text-main); padding: 13px 26px; border-radius: 10px;
+    font-weight: 700; font-size: 15px; text-decoration: none; border: 1px solid var(--border);
+  }
+  .platform-note { margin-top: 14px; font-size: 13px; color: var(--text-dim); }
+
+  /* Features */
+  .features { padding: 40px 0 56px; }
+  .section-title { text-align: center; font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .section-sub { text-align: center; color: var(--text-dim); font-size: 15px; margin-bottom: 36px; }
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  }
+  .feature-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px;
+  }
+  .feature-icon {
+    width: 40px; height: 40px; border-radius: 10px; background: rgba(31,122,112,0.1);
+    display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px;
+  }
+  .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .feature-card p { font-size: 14px; color: var(--text-dim); }
+
+  /* Platforms */
+  .platforms { text-align: center; padding: 8px 0 56px; }
+  .platform-badges { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .platform-badge {
+    display: flex; align-items: center; gap: 8px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px;
+    text-decoration: none; font-weight: 600; font-size: 14px; color: var(--text-main);
+  }
+
+  /* License / Buy */
+  .license-section {
+    background: var(--teal-dark); color: #fff; padding: 56px 0; text-align: center;
+  }
+  .license-section .section-title, .license-section .section-sub { color: #fff; }
+  .license-section .section-sub { color: rgba(255,255,255,0.75); }
+  .price-tag { font-weight: 800; color: var(--coral); }
+  .buy-shell {
+    background: #fff; border-radius: 16px; padding: 28px; max-width: 420px; margin: 28px auto 0;
+  }
+  .buy-shell select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 14px; margin-bottom: 12px; color: var(--text-main); background: #fff;
+  }
+
+  /* Footer */
+  footer {
+    padding: 32px 0; text-align: center; font-size: 13px; color: var(--text-dim);
+    border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  footer a { color: var(--teal); font-weight: 600; text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 32px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="container">
+    <nav>
+      <div class="brand"><span class="icon">🧹</span> DupSweep</div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#license">Get License</a></li>
+      </ul>
+      <a class="nav-cta" href="#download">Download</a>
+    </nav>
+  </div>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Stop guessing which<br>files are <span class="accent">safe to delete.</span></h1>
+      <p>DupSweep finds duplicate files, folders, and photos — every match byte-verified, every deletion recoverable. For macOS &amp; Windows.</p>
+      <div class="hero-btns" id="download">
+        <a class="btn-primary" href="https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-macos.dmg">⌘ Download for macOS</a>
+        <a class="btn-secondary" href="https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-windows-setup.exe">⊞ Download for Windows</a>
+      </div>
+      <p class="platform-note">Free trial — 15 deletions. 5€ for a lifetime license.</p>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">Built to be trusted with your files</h2>
+      <p class="section-sub">Nothing gets removed without verification.</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🗂️</div>
+          <h3>SHA-256 Verified Files</h3>
+          <p>Duplicate matches are confirmed byte-for-byte before anything is touched — never just filename or size.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📁</div>
+          <h3>Duplicate Folder Clustering</h3>
+          <p>Finds whole duplicated folder structures, not just individual files, with safe in-place or copy-based merging.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖼️</div>
+          <h3>Visual Photo Similarity</h3>
+          <p>Perceptual hashing (dHash + pHash) catches near-duplicate photos, not just exact copies.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">↩️</div>
+          <h3>Undo, Always</h3>
+          <p>Every deletion goes to the system Trash first, with full operation history and one-key undo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="platforms">
+    <div class="container">
+      <div class="platform-badges">
+        <a class="platform-badge" href="https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-macos.dmg">⌘ macOS (Universal)</a>
+        <a class="platform-badge" href="https://github.com/luisdanielsilva/DupSweep/releases/latest/download/DupSweep-windows-setup.exe">⊞ Windows</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="license-section" id="license">
+    <div class="container">
+      <h2 class="section-title">Unlock unlimited cleanup</h2>
+      <p class="section-sub">Pay <span class="price-tag">5€</span> once for a lifetime Pro license.</p>
+      <div class="buy-shell">
+        <div id="buyWidget" class="buy-widget" data-app="dupsweep"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 DupSweep. Questions? <a href="mailto:support@dupsweep.com">support@dupsweep.com</a></p>
+    </div>
+  </footer>
+
+  <script src="https://singleuseapps.com/buy-widget.js?v=2"></script>
+</body>
+</html>
