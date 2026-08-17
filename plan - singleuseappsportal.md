@@ -2,13 +2,19 @@
 
 Plan for turning the manual license-key process (currently the standalone `SingleUseApps-KeyGen` desktop tool) into a real, paid, self-service flow — and restructuring the single Portal site into a multi-domain product line (Apps Hub + one site per app, starting with DupSweep).
 
-Status: **planning/setup phase** — domains registered and migrating to Cloudflare; no backend code, no org, no landing pages built yet.
+Status: **built and live in Stripe test mode** (2026-08-18). The original goal is shipped except go-live (live Stripe keys), DupSweep screenshots, and PayPal (on hold). Earlier sections below still contain the build log in past-present mix; treat **§12 and this status block** as the source of truth for what is current.
+
+**Current snapshot (2026-08-18):**
+- **GitHub org `SingleUseApps`** holds `SingleUseApps-Hub` (this repo; local folder is still named `SingleUseApps-Portal`), `dupsweep` (app + `dupsweep-site/`), and `SingleUseApps-KeyGen`. Personal site is **not** in any repo. `FileLister` / `KnockApp` / `VisualExif` / `FileLister-Tauri` stayed under the personal account.
+- **Live sites:** `luisdanielsilva.com` (personal page, deployed by hand to the VPS), `singleuseapps.com` (Apps Hub; `.pt` redirects here), `dupsweep.com` (landing page + Buy Widget).
+- **license-service** is on the VPS (PM2 `:4002`, nginx `/api/` on `singleuseapps.com`). Algorithm, salts, Stripe test checkout, webhook, key DB, and email are server-side. A real browser test-mode purchase issued a key.
+- **VPS deploys are manual** (`rsync` / `scp`). Hub GitHub Actions (`deploy.yml`, `test-connectivity.yml`) are **stripped to no-ops and disabled** in the Actions UI — a Run workflow click cannot reach the VPS or overwrite the personal page. Do not re-enable them. Do not rsync this repo's root `index.html`/`script.js`/`style.css` to `luisdanielsilva.com`.
 
 ---
 
 ## 1. Goal
 
-Port the key-generation algorithm from the private repo `luisdanielsilva/SingleUseApps-KeyGen` (a standalone PySide6 desktop tool used to manually issue keys — stays as-is, for manual/test issuance) into a real web flow: a customer pays, and a valid license key is generated and delivered automatically.
+Port the key-generation algorithm from the private repo `SingleUseApps/SingleUseApps-KeyGen` (transferred from `luisdanielsilva/SingleUseApps-KeyGen` on 2026-08-17; a standalone PySide6 desktop tool used to manually issue keys — stays as-is, for manual/test issuance) into a real web flow: a customer pays, and a valid license key is generated and delivered automatically.
 
 ## 2. Site structure
 
@@ -84,31 +90,31 @@ key       = "XXXX-XXXX-XXXX-XXXX-XXXX-SIGSIG"   (seed in 5 groups of 4, then the
 ```
 
 - Per-app `SALT_MAP` values carry over unchanged, so keys stay compatible with however the apps currently validate them offline.
-- **Bug to fix in the process:** the current Portal's client-side `script.js` reimplements this with only a **4-char** signature (`hashHex.substring(0,4)`) — must be corrected to 6 chars to match the desktop tool.
-- **Security issue this whole effort fixes:** `script.js` currently exposes `SALT_MAP` and the full algorithm in public, readable client code — anyone can view-source and mint themselves free valid keys. The algorithm/salts must live server-side only, going forward.
+- **Fixed:** the old Portal `script.js` used a **4-char** signature (`hashHex.substring(0,4)`). `license-service` and DupSweep's validator now agree on **6 chars**.
+- **Fixed:** `SALT_MAP` and the algorithm no longer ship in public client code. Salts live in VPS env vars only. The old client-side keygen and fake `simulatePayment()` were removed.
 
 ## 5. Payments
 
-- Both **Stripe** and **PayPal** (the Portal already has both buttons; today `simulatePayment()` is fake — a `setTimeout` with no real payment check — this gets replaced entirely).
+- **Stripe test path is live.** PayPal is still on hold. The old Portal's fake `simulatePayment()` (`setTimeout`, no payment check) is gone.
 - Real, webhook-verified confirmation before any key is issued.
-- **Stripe test keys obtained (2026-08-16).** Publishable key: `pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve` (safe to embed in frontend code). The matching secret key is intentionally **not** recorded in this file — kept in local memory only, never committed to git; moves to a VPS environment variable once `license-service` is scaffolded. A webhook signing secret (`whsec_...`) is still needed, generated once a real webhook endpoint URL exists to register with Stripe.
-- **PayPal on hold (2026-08-16):** deliberately deferring PayPal Developer sandbox credentials until the Stripe path is built and confirmed working end-to-end (Buy Widget → checkout → webhook → key generated → email delivered) — avoids building two payment integrations in parallel before either is proven.
+- **Stripe test keys obtained (2026-08-16).** Publishable key: `pk_test_51U4kTtRpCbAHfa5oo6iUWnaqJpYsfaX6kOiHlXrw4RffpOuo5kiL5YvdKPVSUOR0viCXUnTb3kaSi5KlFeMe5zay00y9FPsJve` (safe to embed in frontend code). The matching secret key is **not** recorded in this file — it lives in the VPS `.env` as `STRIPE_SECRET_KEY`. Webhook signing secret (`whsec_...`) is also on the VPS as `STRIPE_WEBHOOK_SECRET` (registered 2026-08-16 against the live `/api/webhooks/stripe` endpoint).
+- **PayPal on hold (2026-08-16):** deferred until the Stripe path was proven end-to-end. That Stripe path is now proven in test mode; PayPal is still not started.
 - **Pricing confirmed (2026-08-16):** 5€ for a lifetime license — same model as the current apps, applies to DupSweep too. Implemented as a **flat 5€ price**, not adjustable "pay what you want" — Stripe Checkout Sessions don't accept `custom_unit_amount` inline (needs a pre-created `Price` object); user confirmed flat 5€ is fine, adjustable pricing is a possible future refinement, not planned work now.
-- **Still needed:** Stripe live keys (later, once ready for real payments), PayPal credentials (once Stripe is proven).
+- **Still needed for go-live:** Stripe **live** keys and a live webhook endpoint (replace the test ones). PayPal credentials only if/when PayPal is picked back up.
 
 ## 6. Shared "Buy Widget"
 
 Payment is implemented **once**, embedded on every site so it feels native to each domain instead of redirecting visitors elsewhere:
 
-- One JS+CSS widget, hosted once, included via a single `<script>` tag + per-site config (`app="dupsweep"`, price, accent color).
-- Uses **Stripe Embedded Checkout/Elements** and **PayPal JS SDK Smart Buttons** — both render inline (modal/iframe), so the visitor never leaves the app's own domain (unlike a redirect to `checkout.stripe.com`).
+- **Built:** one JS widget (`license-service/public/buy-widget.js`), served from `singleuseapps.com`, included via a `<script>` tag + per-site config (`data-app`, `data-price-label`, `data-accent`). Embedded on the Hub and `dupsweep.com`.
+- Stripe Embedded Checkout renders inline so the visitor never leaves the app's own domain. PayPal Smart Buttons were part of the original sketch; not implemented (on hold).
 - Every instance calls the same License Service API — one implementation, reused everywhere, only skinned per-site via config.
-- Requires **CORS enabled** on the License Service for each known app domain — a config addition per new domain, not new code.
-- Given repo-organization plans below, the widget will likely live as a subfolder inside `license-service` rather than its own repo, to avoid sprawl at this scale.
+- CORS allow-list on the License Service per known app domain — a config addition per new domain, not new code.
+- No separate widget repo (decision 2026-08-17). Lives as a static file next to `license-service`.
 
 ## 7. Backend — License Service
 
-**Location decision (2026-08-16):** building as a `license-service/` subfolder inside this same `SingleUseApps-Portal` repo, rather than waiting on the GitHub org migration (put on hold — see §10). Can move into its own repo later without losing history if the org migration happens.
+**Location decision (2026-08-16):** built as a `license-service/` subfolder inside this repo (then still named `SingleUseApps-Portal`). The GitHub org migration happened later (2026-08-17, see §10); `license-service` stayed in `SingleUseApps-Hub` rather than becoming its own repo. Can still be split out later without losing history.
 
 **Scope decision (2026-08-16):** Stripe-only for the first working version — PayPal is on hold until Stripe is proven end-to-end (see §5). The backend's internal `issueKey()` function is provider-agnostic, so adding PayPal later only means a second checkout/webhook route, not a rewrite.
 
@@ -131,7 +137,7 @@ Payment is implemented **once**, embedded on every site so it feels native to ea
 
 **Cross-implementation check:** a key generated by `license-service` was independently verified in Python to have the exact expected signature — confirming `license-service` (JS), `keygen_app.py` (Python), and DupSweep's Rust validator all agree on the identical algorithm.
 
-**Phase 2 — deployment — in progress (2026-08-16)**
+**Phase 2 — deployment — complete (2026-08-16)** (VPS live; GitHub Actions for this path never automated — see §12)
 
 DNS: added the missing A record for `singleuseapps.com`/`www` → the VPS IP in Cloudflare, confirmed resolving.
 
@@ -146,7 +152,7 @@ DNS: added the missing A record for `singleuseapps.com`/`www` → the VPS IP in 
 10. Registered the real Stripe webhook via the API (no dashboard needed) → `STRIPE_WEBHOOK_SECRET` added to the VPS `.env`, service restarted.
     - **Bug caught and fixed:** nginx's `proxy_pass` had a trailing slash, which strips the `/api/` prefix before forwarding — Express still expected it, so every request 404'd. Fixed by dropping the trailing slash.
     - **Verified live with real calls:** `/api/health` and `/api/checkout/stripe` both work through the production URL (a real Stripe test-mode session was created). Installed the Stripe CLI and ran `stripe trigger checkout.session.completed` against the live endpoint — confirmed via server logs that webhook **signature verification passed** on a real Stripe-signed event, and the handler correctly rejected it for missing custom metadata (expected, since the CLI's generic fixture doesn't carry our `appId`/`email`) without crashing.
-11. **Still open:** GitHub Actions automation for `license-service/**` deploys (currently deployed manually) — not blocking, revisit when convenient.
+11. **Not automated, by choice:** GitHub Actions for `license-service/**` deploys was never built. Deploys stay manual. The old root `deploy.yml` is no longer a fallback — stripped and disabled 2026-08-18 (see §12).
 
 **Phase 3 — complete (2026-08-16)**
 
@@ -165,7 +171,7 @@ Reused the existing, already-live Portal support-form instead of a separate thro
 
 **Decision: deploy manually for now, not worth more time chasing this.** My SSH access works reliably every time; automated CI is deprioritized until revisited later, possibly via direct public SSH instead of routing through Tailscale in CI (a real security-posture change, not a quick fix, so not undertaken now).
 
-**Phase 4 — polish, in progress (2026-08-17)**
+**Phase 4 — polish — Buy Widget complete (2026-08-17); PayPal still on hold**
 
 15. Build the real, styled, embeddable Buy Widget (Phase 3 reused the Portal's own form directly instead — this is for per-app sites like DupSweep's, per the multi-site plan).
     - **Decided: no separate repo for the widget.** It's one static JS file, not an app with its own dependency/release lifecycle — `license-service` already has a stable deployed domain (`singleuseapps.com`) that can serve it statically alongside the API. Revisit only if it later needs independent versioning/build tooling.
@@ -214,7 +220,7 @@ Each app domain gets its own branded address (`support@dupsweep.com`, `support@s
 
 **`singleuseapps.com` — reduced scope, complete.** Discovered Resend's **free plan only supports 1 verified domain**, already used by `dupsweep.com`. Considered: upgrading to Resend Pro (~$20/mo, unlimited domains), a second free Resend account via Gmail plus-addressing (extra logins/API keys to juggle per app going forward), or skipping Send-as for this domain. **Decision: skip Resend/Gmail Send-as for `singleuseapps.com` for now** — zero cost, replies from this inbox just show as `singleuseapp@gmail.com` instead of `support@singleuseapps.com`, acceptable at current volume. Revisit (likely Resend Pro, since the same limit will recur for every future app domain) once it's worth it. So this domain only got steps 1–3 above (Cloudflare Email Routing, receiving only) — no domain verification or Send-as. **Confirmed working (2026-08-15)** — test email received.
 
-**Email infrastructure phase: complete for both current domains.** `dupsweep.com` has full receive + reply-as; `singleuseapps.com` has receive-only (by choice). Both `support@` addresses land in `singleuseapp@gmail.com`. Next phase: Stripe/PayPal credentials, GitHub org, `license-service` backend.
+**Email infrastructure phase: complete for both current domains.** `dupsweep.com` has full receive + reply-as; `singleuseapps.com` has receive-only (by choice). Both `support@` addresses land in `singleuseapp@gmail.com`. Stripe test path, GitHub org, and `license-service` all landed after this section was first written — see the status block and §12.
 
 ## 9. Domains — registered
 
@@ -264,15 +270,15 @@ Verified live: real 200 response, widget renders, and a real Stripe checkout ses
 - [x] Cloudflare Email Routing + Resend SMTP + Gmail "Send mail as" fully working for `support@dupsweep.com`
 - [x] Cloudflare Email Routing (receiving only) working for `support@singleuseapps.com`
 - [x] Stripe test keys obtained
-- [ ] ~~PayPal sandbox + live app credentials~~ — on hold until Stripe is proven working
+- [ ] ~~PayPal sandbox + live app credentials~~ — on hold. Stripe test path is already proven; PayPal is still not started.
 - [x] Create the `SingleUseApps` GitHub org — built, 3 repos transferred/renamed, `dupsweep-site/` moved into the `dupsweep` repo (see §10)
 - [x] Generate a DupSweep salt for `SALT_MAP` — `DupSweep-Secret-Salt-2026-Sweep`
 - [x] Fix DupSweep's license algorithm mismatch (2 PRs merged) so it accepts keys `license-service` issues
 - [x] Scaffold `license-service/` (Phase 1: algorithm, DB, Stripe checkout + webhook endpoints, CORS) — built and tested with real Stripe test-mode calls
 - [x] Deploy `license-service` to the VPS (PM2 + nginx server block/cert for `singleuseapps.com`) — verified live with real Stripe test-mode calls
 - [x] Register the Stripe webhook endpoint → `STRIPE_WEBHOOK_SECRET` — signature verification confirmed working on a real Stripe-signed event
-- [~] Fix GitHub Actions deploy pipeline — expired key fixed, retry-loop false-success bug fixed, but the underlying Tailscale-from-ephemeral-runner connectivity is genuinely unreliable. **Decided: deploy manually for now.** Auto-trigger since fully **disabled** (`workflow_dispatch` only) — the repo root is now stale relative to the live personal page, so an auto-run risked silently overwriting it. Revisit later, possibly via direct public SSH instead of Tailscale in CI, once there's a real need to re-enable automation.
-- [ ] Automate `license-service/**` (and `hub/**`) deploys — not started; would need its own workflow scoped to those subfolders only, kept separate from the now-disabled root workflow
+- [x] Neutralize Hub GitHub Actions (2026-08-18) — `deploy.yml` and `test-connectivity.yml` are **stripped to no-ops** (no Tailscale, SSH, rsync, or nginx; job `if: false`) and **disabled in the Actions UI** (`disabled_manually`). A leftover "Run workflow" click cannot touch the VPS or overwrite `luisdanielsilva.com`. The old Tailscale-from-ephemeral-runner flakiness is moot. Do **not** re-enable these workflows. Deploys stay manual.
+- [ ] Automate `license-service/**` (and `hub/**`) deploys — **not started, not planned** while Hub workflows stay disabled. If ever revisited: a new workflow scoped only to those subfolders, never the repo root (the root would clobber the personal page). Not a next step.
 - [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
 - [x] Ran a full, real, browser-driven Stripe test-mode purchase end-to-end — confirmed correct 5€ charge, key issued and displayed
 - [x] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
@@ -315,7 +321,7 @@ flowchart LR
         DS["dupsweep.com"]
     end
 
-    Hub -."deploy.yml — DISABLED<br/>(workflow_dispatch only,<br/>would clobber the personal page)".-> PortalDir
+    Hub -."deploy.yml — stripped + disabled<br/>in Actions UI (2026-08-18)<br/>no rsync/SSH even if re-enabled".-> PortalDir
     Hub -."manual scp (personal page)".-> PortalDir
     Hub -."manual rsync".-> HubDir
     Hub -."manual rsync".-> LicenseDir
@@ -334,6 +340,6 @@ flowchart LR
     DupSweepDir --> DS
 ```
 
-**Reading it:** solid boxes are where code/content actually lives; dotted arrows show *how* it gets there and whether that's automatic or manual. Nothing currently deploys to the VPS automatically — every arrow in is a manual `rsync`/`scp`/`git clone`, or a workflow deliberately disabled. The only automatic GitHub Actions still running are app repos' release builders, which only publish downloadable installers and never touch the VPS.
+**Reading it:** solid boxes are where code/content actually lives; dotted arrows show *how* it gets there and whether that's automatic or manual. **Nothing deploys to the VPS automatically.** Hub Actions are stripped and disabled in the GitHub UI — not merely `workflow_dispatch`-only. Every VPS arrow is a manual `rsync`/`scp`/`git clone`. The only automatic GitHub Actions still running are app repos' release builders, which only publish downloadable installers and never touch the VPS.
 
-*Last updated: 2026-08-17 — GitHub org (`SingleUseApps`) built: `SingleUseApps-Portal` transferred + renamed to `SingleUseApps-Hub`, `DupSweep`/`SingleUseApps-KeyGen` transferred, `dupsweep-site/` moved out of the Hub repo into `dupsweep`. VPS paths/domains unaffected by this — only the GitHub side changed.*
+*Last updated: 2026-08-18 — plan refreshed to current status: org `SingleUseApps` (`SingleUseApps-Hub` / `dupsweep` / `SingleUseApps-KeyGen`); Stripe test path live; Hub `deploy.yml` + `test-connectivity.yml` stripped to no-ops and disabled in Actions. Local checkout folder is still `SingleUseApps-Portal`.*
