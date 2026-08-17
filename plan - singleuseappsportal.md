@@ -220,7 +220,7 @@ Each app domain gets its own branded address (`support@dupsweep.com`, `support@s
 
 Bought on Amen.pt (2026-08-15): `dupsweep.com`, `singleuseapps.com`, `singleuseapps.pt`.
 
-**Bug found (2026-08-17), not yet fixed:** `singleuseapps.pt` doesn't reach the VPS — it serves Amen's default parking "courtesy page," not any of our sites. The `.pt` registry nameservers correctly point to Cloudflare, but the DNS record inside Cloudflare's zone for this domain appears to still be proxied and pointing at Amen's old parking IP — likely never got the manual A-record fix that `dupsweep.com`/`singleuseapps.com` received during migration. Needs: fix the A record → VPS IP, DNS-only, then decide redirect target (`singleuseapps.com`, matching the `luisdanielsilva.pt` → `.com` pattern) vs. serving the Hub directly.
+**Bug found (2026-08-17) — fixed.** `singleuseapps.pt` wasn't reaching the VPS — it served Amen's default parking page. Fixed in two parts: (1) corrected the Cloudflare A records (`@` and `www`) to the VPS IP, DNS-only — hit a snag where adding the `www` record failed due to a leftover CNAME needing to be edited/deleted first; (2) HTTPS had no dedicated nginx config at all and was silently serving `luisdanielsilva.com`'s certificate (wrong domain, would show a browser warning) — added a new `certbot` cert + nginx block redirecting both HTTP and HTTPS to `https://singleuseapps.com`, matching the existing `luisdanielsilva.pt` → `.com` pattern. Verified live: correct redirect chain, valid cert (`CN=singleuseapps.pt`).
 
 ## 10. GitHub organization — on hold, target for later
 
@@ -268,7 +268,7 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Build the real shared Buy Widget (`buy-widget.js`) and switch the Portal to use it — confirmed with a real browser purchase on `www.luisdanielsilva.com`
 - [ ] Build the DupSweep landing page (needs example site + assets from user)
 - [x] Build the Apps Hub site at `singleuseapps.com` (`hub/` — adapted from the Portal; FileLister Pro/Tauri removed, DupSweep added, contact form → `singleuseapp@gmail.com`) — deployed manually, verified live
-- [ ] Fix `singleuseapps.pt`'s Cloudflare DNS record (currently serves Amen's parking page instead of reaching the VPS)
-- [ ] Migrate the Portal (`luisdanielsilva.com`) to be purely personal, per the original multi-site plan — still has the full apps catalog + buy flow duplicated there today
+- [x] Fix `singleuseapps.pt`'s DNS + missing HTTPS config — now correctly redirects (HTTP and HTTPS) to `singleuseapps.com` with a valid cert
+- [x] Migrate the Portal (`luisdanielsilva.com`) to be purely personal — simple single-viewport profile page (name/title/company/location/education/languages/contact/LinkedIn), sourced from the user's public LinkedIn profile. **Deployed directly to the VPS, intentionally not in Git** (user's explicit choice). ⚠️ This repo's root `index.html`/`script.js`/`style.css` are now stale/unmanaged for `luisdanielsilva.com` — do **not** re-deploy them there, it would silently overwrite the personal page with the old app catalog.
 - [ ] Add PayPal once Stripe is proven
 - [ ] Go live: swap to live keys/webhooks
