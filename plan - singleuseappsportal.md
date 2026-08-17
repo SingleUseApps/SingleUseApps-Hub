@@ -263,7 +263,7 @@ Build now, at `dupsweep.com`, in parallel with the still-pending backend — usi
 - [x] Confirm pricing — flat 5€ lifetime license, same as existing apps
 - [x] Ran a full, real, browser-driven Stripe test-mode purchase end-to-end — confirmed correct 5€ charge, key issued and displayed
 - [x] Remove the old client-side `SALT_MAP`/key-gen code and fake `simulatePayment()` from the current Portal
-- [ ] Build the real shared Buy Widget (Phase 3 reused the Portal's own form directly instead; revisit for per-app sites)
+- [x] Build the real shared Buy Widget (`buy-widget.js`) and switch the Portal to use it — needs one real browser click-through to confirm the swap didn't break anything
 - [ ] Build the DupSweep landing page (needs example site + assets from user)
 - [ ] Build/migrate the Apps Hub site to `singleuseapps.com`
 - [ ] Add PayPal once Stripe is proven
