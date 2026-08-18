@@ -50,3 +50,44 @@ export function insertLicense({ paymentRef, provider, appId, name, email, key, s
 export function findLicenseByPaymentRef(paymentRef) {
   return findByPaymentRefStmt.get(paymentRef);
 }
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS contact_hits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS contact_hits_created ON contact_hits (created_at);
+  CREATE INDEX IF NOT EXISTS contact_hits_ip ON contact_hits (ip, created_at);
+`);
+
+const CONTACT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CONTACT_MAX_PER_IP = 5;
+const CONTACT_MAX_GLOBAL = 30;
+
+const contactCountIpStmt = db.prepare(
+  `SELECT COUNT(*) AS n FROM contact_hits WHERE ip = ? AND created_at > ?`
+);
+const contactCountGlobalStmt = db.prepare(
+  `SELECT COUNT(*) AS n FROM contact_hits WHERE created_at > ?`
+);
+const contactInsertStmt = db.prepare(
+  `INSERT INTO contact_hits (ip, created_at) VALUES (?, ?)`
+);
+const contactPruneStmt = db.prepare(
+  `DELETE FROM contact_hits WHERE created_at < ?`
+);
+
+export function contactLimitStatus(ip) {
+  const since = Date.now() - CONTACT_WINDOW_MS;
+  contactPruneStmt.run(since - CONTACT_WINDOW_MS);
+  const perIp = contactCountIpStmt.get(ip, since).n;
+  const global = contactCountGlobalStmt.get(since).n;
+  if (perIp >= CONTACT_MAX_PER_IP) return { limited: true, reason: "ip" };
+  if (global >= CONTACT_MAX_GLOBAL) return { limited: true, reason: "global" };
+  return { limited: false };
+}
+
+export function recordContactHit(ip) {
+  contactInsertStmt.run(ip, Date.now());
+}

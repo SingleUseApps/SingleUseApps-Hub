@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { sendContactEmail } from "../email.js";
+import { contactLimitStatus, recordContactHit } from "../db.js";
 
 const router = Router();
 
@@ -15,10 +16,6 @@ const APPS = {
   other: "Other",
 };
 
-const WINDOW_MS = 60 * 60 * 1000;
-const MAX_PER_WINDOW = 3;
-const hits = new Map();
-
 function clientIp(req) {
   // nginx on this host sets X-Real-IP; trust-proxy/X-Forwarded-For is a fallback.
   const real = req.headers["x-real-ip"];
@@ -26,25 +23,19 @@ function clientIp(req) {
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
-function rateLimited(ip) {
-  const now = Date.now();
-  const recent = (hits.get(ip) || []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= MAX_PER_WINDOW) {
-    hits.set(ip, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(ip, recent);
-  return false;
-}
-
 function clip(value, max) {
   return String(value || "").trim().slice(0, max);
 }
 
 router.post("/contact", async (req, res) => {
-  if (rateLimited(clientIp(req))) {
-    return res.status(429).json({ error: "Too many requests. Try again in an hour." });
+  const ip = clientIp(req);
+  const limit = contactLimitStatus(ip);
+  if (limit.limited) {
+    const msg =
+      limit.reason === "ip"
+        ? "Too many messages from this network today (max 5). Try again tomorrow."
+        : "The contact form is at its daily limit (max 30). Try again tomorrow.";
+    return res.status(429).json({ error: msg });
   }
 
   const type = clip(req.body?.type, 20);
@@ -74,6 +65,7 @@ router.post("/contact", async (req, res) => {
       console.error("contact email failed:", result.error);
       return res.status(502).json({ error: "Could not send the message." });
     }
+    recordContactHit(ip);
     return res.json({ ok: true });
   } catch (err) {
     console.error("contact email failed:", err);
