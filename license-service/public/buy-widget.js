@@ -35,6 +35,7 @@
         background: var(--suaw-accent, #635BFF);
       }
       .suaw-btn:disabled { opacity: 0.6; cursor: default; }
+      .suaw-pay-hint { margin: 8px 0 0; font-size: 12px; line-height: 1.45; text-align: center; opacity: 0.75; }
       .suaw-error { color: #d0342c; font-size: 13px; margin-top: 8px; }
       .suaw-pending, .suaw-result { font-family: inherit; font-size: 14px; }
       .suaw-key {
@@ -76,6 +77,7 @@
             <input type="email" class="suaw-email" placeholder="E-mail Address">
           </div>
           <button type="button" class="suaw-btn suaw-pay">Pay with Stripe — ${priceLabel}</button>
+          <p class="suaw-pay-hint">Credit card, MB WAY, and other methods. You don’t need a Stripe account.</p>
           <p class="suaw-error suaw-hidden"></p>
         </div>
         <div class="suaw-checkout suaw-hidden"></div>
