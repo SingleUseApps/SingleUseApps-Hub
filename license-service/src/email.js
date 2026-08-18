@@ -2,6 +2,28 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+export async function sendContactEmail({ typeLabel, appName, source, name, email, title, description }) {
+  const from = process.env.RESEND_FROM || "Single Use Apps <support@dupsweep.com>";
+  const to = process.env.CONTACT_TO || "singleuseapp@gmail.com";
+  const text = `Type: ${typeLabel}
+App: ${appName}
+Source: ${source}
+Name: ${name}
+Email: ${email}
+
+--- Description ---
+
+${description}`;
+
+  return resend.emails.send({
+    from,
+    to,
+    replyTo: email,
+    subject: `[${typeLabel}] ${title}`,
+    text,
+  });
+}
+
 export async function sendLicenseEmail({ name, email, appName, key }) {
   const from = process.env.RESEND_FROM || "Single Use Apps <support@singleuseapps.com>";
   const text = `Hello ${name},

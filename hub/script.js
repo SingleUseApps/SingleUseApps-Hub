@@ -124,37 +124,69 @@ document.getElementById('appSelect').addEventListener('change', (e) => {
     window.SUAWBuyWidget.init(widget);
 });
 
+const CONTACT_API = "https://singleuseapps.com/api/contact";
+const CONTACT_MAILTO = "support@singleuseapps.com";
+
 function openContact() {
     document.getElementById('contactModal').classList.remove('hidden');
+    setContactStatus("");
 }
 
 function closeContact() {
     document.getElementById('contactModal').classList.add('hidden');
 }
 
-function sendContact() {
+function setContactStatus(text, kind) {
+    const el = document.getElementById('contactStatus');
+    if (!text) {
+        el.hidden = true;
+        el.textContent = "";
+        return;
+    }
+    el.hidden = false;
+    el.textContent = text;
+    el.className = "contact-status" + (kind ? " contact-status-" + kind : "");
+}
+
+function contactMailtoFallback({ type, name, email, title, description, app }) {
+    const typeLabel = type === "feature" ? "Feature Request" : "Support";
+    const subject = encodeURIComponent(`[${typeLabel}] ${title}`);
+    const body = encodeURIComponent(
+        `Type: ${typeLabel}\nApp: ${app}\nName: ${name}\nEmail: ${email}\n\n--- Description ---\n\n${description}`
+    );
+    window.location.href = `mailto:${CONTACT_MAILTO}?subject=${subject}&body=${body}`;
+}
+
+document.getElementById('contactForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const type = document.getElementById('contactType').value;
+    const app = document.getElementById('contactApp').value;
     const name = document.getElementById('contactName').value.trim();
     const email = document.getElementById('contactEmail').value.trim();
-    const message = document.getElementById('contactMessage').value.trim();
+    const title = document.getElementById('contactTitle').value.trim();
+    const description = document.getElementById('contactDescription').value.trim();
+    const payload = { type, app, name, email, title, description };
 
-    if (!name || !email || !message) {
-        alert("Please fill all fields to send your message.");
-        return;
+    const btn = document.getElementById('contactSubmit');
+    btn.disabled = true;
+    setContactStatus("Sending…");
+
+    try {
+        const res = await fetch(CONTACT_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.error || "Could not send the message.");
+        }
+        setContactStatus("Sent. We'll get back to you by email.", "ok");
+        document.getElementById('contactForm').reset();
+    } catch (err) {
+        setContactStatus((err.message || "Could not send.") + " Opening your mail app as a fallback…", "err");
+        contactMailtoFallback(payload);
+    } finally {
+        btn.disabled = false;
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        alert("Please enter a valid e-mail address.");
-        return;
-    }
-
-    const subject = encodeURIComponent(`Single Use Apps Contact: Message from ${name}`);
-    const body = encodeURIComponent(`Name: ${name}\nContact E-mail: ${email}\n\n--- Message ---\n\n${message}`);
-
-    window.location.href = `mailto:singleuseapp@gmail.com?subject=${subject}&body=${body}`;
-
-    closeContact();
-    document.getElementById('contactName').value = '';
-    document.getElementById('contactEmail').value = '';
-    document.getElementById('contactMessage').value = '';
-}
+});

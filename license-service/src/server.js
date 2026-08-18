@@ -4,10 +4,14 @@ import cors from "cors";
 import checkoutRouter from "./routes/checkout.js";
 import webhookRouter from "./routes/webhook.js";
 import licenseRouter from "./routes/license.js";
+import contactRouter from "./routes/contact.js";
 
 const app = express();
 const PORT = process.env.PORT || 4002;
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+
+// nginx sits in front and sets X-Forwarded-For — needed for per-IP rate limits.
+app.set("trust proxy", 1);
 
 app.use(cors({ origin: allowedOrigins }));
 
@@ -20,6 +24,7 @@ app.use("/api", webhookRouter);
 app.use(express.json());
 app.use("/api", checkoutRouter);
 app.use("/api", licenseRouter);
+app.use("/api", contactRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

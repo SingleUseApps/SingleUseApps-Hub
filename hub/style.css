@@ -415,6 +415,14 @@ input:focus, select:focus, textarea:focus {
 
 footer { padding: 64px 0; text-align: center; color: var(--text-dim); font-size: 13px; }
 
+.contact-status {
+    font-size: 13px;
+    margin: 0 0 8px;
+    color: var(--text-dim);
+}
+.contact-status-ok { color: #34C759; }
+.contact-status-err { color: #ff6b6b; }
+
 /* Detail download area (single button or per-platform buttons + live version) */
 .detail-actions { text-align: center; }
 

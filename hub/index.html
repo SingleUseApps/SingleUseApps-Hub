@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Single Use Apps | Premium macOS Utilities</title>
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=12">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -138,41 +138,62 @@
     <footer>
         <div class="container">
             <p>&copy; 2026 Single Use Apps. Proudly made in Portugal. 🇵🇹</p>
-            <button class="outline-btn" style="margin-top: 20px; font-size: 12px; padding: 10px 20px;" onclick="openContact()">💌 Contact Form</button>
+            <button class="outline-btn" style="margin-top: 20px; font-size: 12px; padding: 10px 20px;" onclick="openContact()">Contact / Feature Request</button>
         </div>
     </footer>
 
-    <!-- Contact Modal -->
+    <!-- Contact / Feature Request Modal -->
     <section id="contactModal" class="details-section hidden">
         <div class="container">
             <div class="details-content glass-card" style="background: rgba(20, 20, 25, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;">
                 <button class="close-btn" onclick="closeContact()">×</button>
                 <div class="details-header">
                     <div>
-                        <h2>Contact Us</h2>
-                        <p class="tagline">Have a question or suggestion?<br>Drop us a message!</p>
+                        <h2>Contact / Feature Request</h2>
+                        <p class="tagline">Support questions or ideas for a new feature.</p>
                     </div>
                 </div>
-                <div class="details-body generator-form" style="margin-top: 20px;">
+                <form id="contactForm" class="details-body generator-form" style="margin-top: 20px;">
                     <div class="input-group">
-                        <label>Name</label>
-                        <input type="text" id="contactName" placeholder="Your name">
+                        <label for="contactType">Type</label>
+                        <select id="contactType" required>
+                            <option value="support">Support</option>
+                            <option value="feature">Feature Request</option>
+                        </select>
                     </div>
                     <div class="input-group">
-                        <label>E-mail</label>
-                        <input type="email" id="contactEmail" placeholder="Your e-mail">
+                        <label for="contactApp">App</label>
+                        <select id="contactApp" required>
+                            <option value="dupsweep">DupSweep</option>
+                            <option value="knockapp">KnockApp</option>
+                            <option value="visualexif">VisualExif</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
                     <div class="input-group">
-                        <label>Message</label>
-                        <textarea id="contactMessage" rows="5" placeholder="Describe your problem or idea here..."></textarea>
+                        <label for="contactName">Name</label>
+                        <input type="text" id="contactName" placeholder="Your name" required maxlength="80">
                     </div>
-                    <button class="primary-btn" style="margin-top: 10px; width: 100%;" onclick="sendContact()">Send Message</button>
-                </div>
+                    <div class="input-group">
+                        <label for="contactEmail">E-mail</label>
+                        <input type="email" id="contactEmail" placeholder="Your e-mail" required maxlength="120">
+                    </div>
+                    <div class="input-group">
+                        <label for="contactTitle">Title</label>
+                        <input type="text" id="contactTitle" placeholder="Short topic" required maxlength="120">
+                    </div>
+                    <div class="input-group">
+                        <label for="contactDescription">Description</label>
+                        <textarea id="contactDescription" rows="5" placeholder="Describe the problem or the feature you want" required maxlength="4000"></textarea>
+                    </div>
+                    <p id="contactStatus" class="contact-status" hidden></p>
+                    <button type="submit" id="contactSubmit" class="primary-btn" style="margin-top: 10px; width: 100%;">Send</button>
+                </form>
             </div>
         </div>
     </section>
 
     <script src="https://singleuseapps.com/buy-widget.js?v=2"></script>
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=11"></script>
 </body>
 </html>
