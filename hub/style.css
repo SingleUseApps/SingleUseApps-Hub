@@ -361,6 +361,7 @@ h1 {
     line-height: 1.45;
     color: var(--text-dim);
 }
+.pay-methods-note strong { color: var(--text-main); font-weight: 700; }
 .support-header { margin-bottom: 40px; }
 
 .highlight-price {
